@@ -1,0 +1,85 @@
+name: Teleagent BuildKit provenance diagnostic only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-buildkit-provenance-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: inspect-exact-public-buildkit-bundle-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Require exact public hosted diagnostic branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Acquire only the exact official BuildKit archive and bundle as data
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-buildkit-provenance"
+          gh release download v0.33.0 --repo moby/buildkit \
+            --pattern buildkit-v0.33.0.linux-amd64.tar.gz \
+            --dir "$RUNNER_TEMP/teleagent-buildkit-provenance"
+          gh release download v0.33.0 --repo moby/buildkit \
+            --pattern buildkit-v0.33.0.linux-amd64.sigstore.json \
+            --dir "$RUNNER_TEMP/teleagent-buildkit-provenance"
+          test "$(stat -c %s "$RUNNER_TEMP/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.tar.gz")" = 93184536
+          test "$(stat -c %s "$RUNNER_TEMP/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.sigstore.json")" = 206690
+          printf '%s\n' \
+            'b6242896d343100808dcbe37565caf381e0a444a6a83d7255926bb1519248ead  '"$RUNNER_TEMP"'/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.tar.gz' \
+            '79c9e854e499359947ae4477bfb4d77c54ba1dac4178eb36d190a56cb10dea0d  '"$RUNNER_TEMP"'/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.sigstore.json' \
+            | sha256sum --check --status
+      - name: Cryptographically inspect the exact public upstream provenance
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "$RUNNER_TEMP/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.tar.gz" \
+            --bundle "$RUNNER_TEMP/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.sigstore.json" \
+            --repo moby/buildkit \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --predicate-type https://slsa.dev/provenance/v1 \
+            --format json > "$RUNNER_TEMP/teleagent-buildkit-provenance/verified.json"
+          python3 -I - "$RUNNER_TEMP/teleagent-buildkit-provenance/verified.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          assert 0 < path.stat().st_size <= 1024 * 1024
+          records = json.loads(path.read_bytes())
+          assert type(records) is list and len(records) == 1
+          result = records[0]['verificationResult']
+          statement = result['statement']
+          assert statement['predicateType'] == 'https://slsa.dev/provenance/v1'
+          assert statement['subject'] == [{
+              'name': 'buildkit-v0.33.0.linux-amd64.tar.gz',
+              'digest': {'sha256': 'b6242896d343100808dcbe37565caf381e0a444a6a83d7255926bb1519248ead'}}]
+          certificate = result['signature']['certificate']
+          assert type(certificate) is dict
+          timestamps = result['verifiedTimestamps']
+          assert type(timestamps) is list and len(timestamps) >= 1
+          identity = {key: value for key, value in certificate.items()
+                      if any(word in key.lower() for word in ('source', 'workflow', 'runner', 'subject'))
+                      and type(value) is str and len(value) <= 500}
+          print({'schema': 'teleagent.buildkit-provenance-diagnostic.v1',
+                 'archiveSubjectVerified': True, 'certificateIdentityFields': identity,
+                 'verifiedTimestampCount': len(timestamps),
+                 'signerPolicyAccepted': False, 'releaseApproved': False})
+          PY

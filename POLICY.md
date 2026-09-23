@@ -50,12 +50,14 @@ verifier must compare them to current authenticated metadata and bind an exact
 
 ## Current refusal state
 
-No release build, release-artifact comparison, signing or deployment workflow or
+No release build, release-artifact comparison, release signing or deployment workflow or
 trusted signing root is selected or installed here. The branch-only unsigned
 libc diagnostic compares two fresh dependency observations per target when
 manually dispatched. By default it discards compiled outputs. An explicit
 experimental mode retains and reconstructs bounded unsigned dependency tars
-for one day. Neither mode produces an admitted release artifact. The sole Actions
+for one day. Neither mode produces an admitted release artifact. A separate
+branch-only fixture attests only fixed harmless text and verifies its certified
+workflow identity; it grants no Teleagent release authority. The sole Actions
 environment secret is the
 temporary private-infrastructure read key described above; there are no
 signing keys, OIDC grants, release artifacts or promotion dispatches. The

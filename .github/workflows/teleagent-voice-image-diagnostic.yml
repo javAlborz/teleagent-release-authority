@@ -1,0 +1,146 @@
+name: Teleagent hosted voice image functional diagnostic only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-voice-image-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  image:
+    name: assemble-one-unsigned-network-disconnected-voice-image-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: teleagent-private-source-read
+    steps:
+      - name: Require exact hosted branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 15728640
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          path: authority
+      - name: Read exact private image recipe source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/homelab-infrastructure
+          ref: 41dc9f92d48befe62edf7f535c4e054bbe907275
+          ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
+          persist-credentials: false
+          path: infrastructure
+          sparse-checkout: |
+            scripts/release/teleagent-offline-voice-image-plan.py
+      - name: Read exact public application source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/teleagent
+          ref: 6cbcc3aadab9053361487d1368c45e74d0a19789
+          persist-credentials: false
+          path: app
+      - name: Bind checked-out inputs and render fixed recipe as data
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C infrastructure rev-parse HEAD)" = 41dc9f92d48befe62edf7f535c4e054bbe907275
+          test "$(git -C app rev-parse HEAD)" = 6cbcc3aadab9053361487d1368c45e74d0a19789
+          test "$(git -C app show -s --format=%T HEAD)" = d11823c9d077abb0ce020d36cd2629b9d4c4eee4
+          test -z "$(git -C authority status --porcelain)"
+          test -z "$(git -C infrastructure status --porcelain)"
+          test -z "$(git -C app status --porcelain)"
+          printf '%s\n' \
+            'dd1119b1440bb3ddbbd69e767bae4a3eda3212140cbddf51638d499f97576fa3  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
+            | sha256sum --check --status
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-recipe"
+          python3 -I - "$RUNNER_TEMP/teleagent-voice-recipe" <<'PY'
+          from pathlib import Path
+          import runpy
+          import sys
+          source = runpy.run_path('infrastructure/scripts/release/teleagent-offline-voice-image-plan.py',
+                                  run_name='hosted_voice_recipe')
+          plan = source['build_plan'](source['APP_EPOCH'], source['MATERIAL_PLAN'], source['APP_TREE'])
+          assert plan['buildExecuted'] is False and plan['releaseApproved'] is False
+          root = Path(sys.argv[1])
+          for row in plan['generatedFiles']:
+              (root / row['path']).write_text(row['content'], encoding='ascii')
+          PY
+      - name: Retrieve and reconstruct exact unsigned musl dependency tar
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-musl-inputs"
+          gh run download 35925176855 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-native-candidate-musl-1 \
+            --dir "$RUNNER_TEMP/teleagent-musl-inputs"
+          gh run download 35925176855 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-observation-musl-1 \
+            --dir "$RUNNER_TEMP/teleagent-musl-inputs"
+          python3 -I authority/scripts/extract-verified-musl-dependencies.py \
+            --tar "$RUNNER_TEMP/teleagent-musl-inputs/musl-1.tar" \
+            --observation "$RUNNER_TEMP/teleagent-musl-inputs/musl-1.json" \
+            --destination "$RUNNER_TEMP/teleagent-musl-dependencies"
+      - name: Stage exact signed-index local APK inputs as data
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$RUNNER_TEMP/teleagent-apk-materials/apk"
+          mkdir -p "$apk/main/x86_64" "$apk/community/x86_64"
+          install -m 0444 authority/inputs/teleagent/index-objects/c1cbca81ade3696886de11a5f02777fe185ccba525edd58403e29b08050993a1 \
+            "$apk/main/x86_64/APKINDEX.tar.gz"
+          install -m 0444 authority/inputs/teleagent/index-objects/0134bc50ab7ac75bf593d035e6278a365e8d83a6157f685b3ffe5e78985f9dd3 \
+            "$apk/community/x86_64/APKINDEX.tar.gz"
+          printf '/materials/apk/main\n/materials/apk/community\n' > "$apk/repositories"
+          printf '%s\n' \
+            'c1cbca81ade3696886de11a5f02777fe185ccba525edd58403e29b08050993a1  '"$apk"'/main/x86_64/APKINDEX.tar.gz' \
+            '0134bc50ab7ac75bf593d035e6278a365e8d83a6157f685b3ffe5e78985f9dd3  '"$apk"'/community/x86_64/APKINDEX.tar.gz' \
+            | sha256sum --check --status
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 120 --output "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk" \
+            https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libcrypto3-3.5.8-r0.apk
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 120 --output "$apk/main/x86_64/libssl3-3.5.8-r0.apk" \
+            https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libssl3-3.5.8-r0.apk
+          test "$(stat -c %s "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk")" = 1978546
+          test "$(stat -c %s "$apk/main/x86_64/libssl3-3.5.8-r0.apk")" = 379265
+          printf '%s\n' \
+            '161223a16f042b8e469e9441291e071464fd91d4f4bbe6f496ee8d0abd4e0701  '"$apk"'/main/x86_64/libcrypto3-3.5.8-r0.apk' \
+            'aca521e5ae4a321322a9d47ed64a1775f5ab1ffd215d1e9fc0433c58f7bfd037  '"$apk"'/main/x86_64/libssl3-3.5.8-r0.apk' \
+            | sha256sum --check --status
+      - name: Assemble one unsigned offline RUN diagnostic on disposable hosted Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH=1790168683
+          docker buildx build --platform linux/amd64 --no-cache --network none \
+            --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
+            --build-context app="$GITHUB_WORKSPACE/app" \
+            --build-context dependencies="$RUNNER_TEMP/teleagent-musl-dependencies" \
+            --build-context materials="$RUNNER_TEMP/teleagent-apk-materials" \
+            --file "$RUNNER_TEMP/teleagent-voice-recipe/Dockerfile" \
+            --tag teleagent-voice-diagnostic:20260923 --load \
+            "$RUNNER_TEMP/teleagent-voice-recipe"
+          test "$(docker image inspect teleagent-voice-diagnostic:20260923 \
+            --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
+            6cbcc3aadab9053361487d1368c45e74d0a19789
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 64 --memory 512m \
+            --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \
+            -e 'const DB=require("better-sqlite3");const db=new DB(":memory:");db.exec("create table smoke(n integer)");db.close();console.log("VOICE_NATIVE_SMOKE_OK")'
+          docker image save --output "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar" \
+            teleagent-voice-diagnostic:20260923
+          sha256sum "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
+          echo 'Unsigned functional image diagnostic passed; no scan, release signing or installation was authorized.'

@@ -61,7 +61,7 @@ def subject(value, target, plan_sha):
          SHA.fullmatch(value['materialPlanSha256']) and
          type(value.get('enginePlanSha256')) is str and
          SHA.fullmatch(value['enginePlanSha256']) and
-         value.get('sourceEpoch') == 1790168683 and
+         value.get('sourceEpoch') == 1790204008 and
          value.get('appSourcePairFilesProjected') == 12 and
          value.get('payloadSourceFilesProjected') == 3 and
          value.get('privateInputReadOnlyAliasesVerified') is True and

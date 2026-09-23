@@ -15,15 +15,15 @@ import runpy
 import stat
 import subprocess
 
-MATERIAL_SOURCE_SHA256 = 'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0'
+MATERIAL_SOURCE_SHA256 = '9caec3e0fee3c9fa44782dddeaa56f3e306aa22e6a36f0b94c218a4b9c7aed4f'
 ENGINE_SOURCE_SHA256 = '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857'
-PLANNER_SOURCE_SHA256 = 'b86c210cb6203d868eca16d4bbe1bb9cbf698923139fb9ae2ba170b58b77b8b7'
-SOURCE_PAIRS_SHA256 = '8ac1ec2f3599ededaa0e6aefea9d68a3629e3f047bcd514ffe89940d8e3c9e89'
+PLANNER_SOURCE_SHA256 = 'f2f617e4d9ed55821295e0ae7b7cbe7b119c3ca55685bd4f4a2b5965545a5def'
+SOURCE_PAIRS_SHA256 = 'dada99e66a0831b7ab974c392affcabe13b4c1ace13d2e9c9b65155d3c7900a9'
 TRIVY_MANIFEST_SHA256 = '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c'
-MATERIAL_PLAN_SHA256 = '1bee8f8df904286a1dcddcc23471fa10cfb96b662b4af68feb866cfc18114cd5'
+MATERIAL_PLAN_SHA256 = '9eb9d2a625817ce9b08107bc6a864d159084aff33bbbb31ddf9e0192647f0ff8'
 ENGINE_PLAN_SHA256 = '5c2dfee0e305d5a84a7debb142b7ddbae3b4dc855a89126622449ebbd2c6e993'
-SOURCE_EPOCH = 1790168683  # Exact pinned app commit's committer timestamp.
-UNSIGNED_PLAN_SHA256 = 'e22dcf6673f42fb76352fb5dda37438c8e9e77eea4bb737cf95c7239f04dfa80'
+SOURCE_EPOCH = 1790204008  # Exact pinned app commit's committer timestamp.
+UNSIGNED_PLAN_SHA256 = 'e86de75ba541da73e69b792d1e3f58e5705cd3b1ef7c34834454ba18177d2593'
 
 
 def need(condition, message):
@@ -195,7 +195,7 @@ def project(on_projected=None, *, workspace=None, runner_temp=None):
     same_file(release / 'teleagent-offline-engine-materials.py', ENGINE_SOURCE_SHA256)
     same_file(release / 'teleagent-offline-build-plan.py', PLANNER_SOURCE_SHA256)
     same_file(inputs / 'trivy/manifest.json', TRIVY_MANIFEST_SHA256)
-    pairs_path = authority / 'inputs/teleagent/source-pairs.json'
+    pairs_path = authority / 'inputs/teleagent/source-pairs-patched-20260923.json'
     same_file(pairs_path, SOURCE_PAIRS_SHA256)
     pairs = json.loads(pairs_path.read_bytes())
     need(type(pairs) is list and len(pairs) == 12 and

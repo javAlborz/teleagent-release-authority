@@ -31,7 +31,7 @@ EXPORT_SHA256 = '944f425f95adb5a3ddd8a7149f7a7c43b069cbf649cd172023ea8834d030dac
 RETAIN_PATH = HERE / 'retain-native-dependency-tar.py'
 RETAIN_SHA256 = '9e542eca4964f2eb866ab62162c8ab64213a16f8de6bafa74531bfa208af88bf'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
-PLAN_SHA256 = 'e22dcf6673f42fb76352fb5dda37438c8e9e77eea4bb737cf95c7239f04dfa80'
+PLAN_SHA256 = 'e86de75ba541da73e69b792d1e3f58e5705cd3b1ef7c34834454ba18177d2593'
 TARGETS = frozenset(('glibc', 'musl'))
 ENGINE = {
     'buildctl': (34512200, '0b45ae3696f836bf711dbd78138e403924d7733f0b2328ba29a7fcf9ad5f1dfd'),
@@ -371,7 +371,7 @@ def projected(*, mounted, materials, engines, app, payload, plan, target,
               retained_dir=None):
     need(target in TARGETS, 'native diagnostic target differs')
     need(plan['schema'] == 'teleagent.offline-build-plan.v1' and
-         plan['sourceEpoch'] == 1790168683 and
+         plan['sourceEpoch'] == 1790204008 and
          plan['buildExecuted'] is False, 'native diagnostic plan identity differs')
     (mounted / 'native-plan.json').write_bytes(
         (json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n').encode('ascii'))

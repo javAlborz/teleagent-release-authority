@@ -18,7 +18,7 @@ observation_test = runpy.run_path(
     run_name='retained_observation_fixture')
 source_env = os.environ.get('TELEAGENT_TEST_EXPORT_SOURCE')
 SOURCE = Path(source_env) if source_env else None
-EPOCH = 1790168683
+EPOCH = 1790204008
 PLAN = observation_test['PLAN']
 
 

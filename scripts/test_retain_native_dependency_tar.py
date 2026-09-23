@@ -14,7 +14,7 @@ module = runpy.run_path(str(Path(__file__).with_name('retain-native-dependency-t
                         run_name='retained_native_tar_test')
 source_env = os.environ.get('TELEAGENT_TEST_EXPORT_SOURCE')
 SOURCE = Path(source_env) if source_env else None
-EPOCH = 1790168683
+EPOCH = 1790204008
 
 
 def canonical(value):

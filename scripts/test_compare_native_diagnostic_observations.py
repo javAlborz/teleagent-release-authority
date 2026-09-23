@@ -18,7 +18,7 @@ def observation(target, digest):
                '/work/source': snapshots['/materials']}
     return {'purpose': 'bounded-teleagent-data-projection',
             'materialPlanSha256': 'c' * 64, 'enginePlanSha256': 'd' * 64,
-            'unsignedBuildPlanSha256': PLAN, 'sourceEpoch': 1790168683,
+            'unsignedBuildPlanSha256': PLAN, 'sourceEpoch': 1790204008,
             'appSourcePairFilesProjected': 12, 'payloadSourceFilesProjected': 3,
             'cleanupVerified': True, 'privateInputReadOnlyAliasesVerified': True,
             'payloadMaterialPinsMatched': True, 'teleagentBuildExecuted': True,

@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import runpy
 
-PLAN_SHA256 = '1bee8f8df904286a1dcddcc23471fa10cfb96b662b4af68feb866cfc18114cd5'
+PLAN_SHA256 = '9eb9d2a625817ce9b08107bc6a864d159084aff33bbbb31ddf9e0192647f0ff8'
 SCHEMA = 'teleagent.offline-material-projection.v1'
 ENGINE_PLAN_SHA256 = '5c2dfee0e305d5a84a7debb142b7ddbae3b4dc855a89126622449ebbd2c6e993'
 ENGINE_SCHEMA = 'teleagent.offline-engine-projection.v1'

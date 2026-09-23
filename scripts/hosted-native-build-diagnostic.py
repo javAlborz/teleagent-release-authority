@@ -26,6 +26,8 @@ import uuid
 
 HERE = Path(__file__).resolve().parent
 PROBE_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-hosted-runc-probe.py'
+EXPORT_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-offline-export-inventory.py'
+EXPORT_SHA256 = 'c3b5edce6e05b087dedce0fb85a4bc6fd1db05fc2fb3a8c7c72ef1c72ef6a454'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
 PLAN_SHA256 = 'a0534189bc561ce59b7140429f10c4a57911057a4239c66db708dba89f617886'
 TARGETS = frozenset(('glibc', 'musl'))
@@ -203,7 +205,7 @@ def private_root(mounted, probe):
     return Path('/probe')
 
 
-def run_target(root, plan, probe, target):
+def run_target(root, plan, probe, export, target):
     need(target in TARGETS, 'native diagnostic target differs')
     jobs = probe['JOB_CGROUP']['create_and_enter_control'](scope := {})
     try:
@@ -319,8 +321,17 @@ def run_target(root, plan, probe, target):
                     (jobs / 'engine/cgroup.kill').write_text('1\n')
                 daemon.wait(timeout=10)
                 adapter.close()
+        observed = export['inventory'](Path('/outputs') / target, target)
+        need(observed['runEvidence']['sha256'] ==
+             hashlib.sha256(receipt.read_bytes()).hexdigest() and
+             observed['releaseApproved'] is False and
+             observed['independentRebuild'] is False,
+             'native export inventory differs')
         return {'target': target, 'phases': records,
-                'receiptSha256': hashlib.sha256(receipt.read_bytes()).hexdigest(),
+                'receiptSha256': observed['runEvidence']['sha256'],
+                'dependencySubjectSha256': observed['subjectSha256'],
+                'dependencyBytes': observed['dependencyBytes'],
+                'dependencyEntries': len(observed['subject']['entries']),
                 'unsignedNativeBuildDiagnostic': True,
                 'releaseAuthority': False}
     finally:
@@ -337,13 +348,16 @@ def inside(mounted, target):
         'private native PID/network namespace differs')
     mounted_exec(mounted)
     probe = runpy.run_path(str(PROBE_PATH), run_name='native_diagnostic_probe')
+    need(hashlib.sha256(EXPORT_PATH.read_bytes()).hexdigest() == EXPORT_SHA256,
+         'native export inventory source differs')
+    export = runpy.run_path(str(EXPORT_PATH), run_name='native_diagnostic_export')
     plan_path = mounted / 'native-plan.json'
     data = plan_path.read_bytes()
     need(hashlib.sha256(data).hexdigest() == PLAN_SHA256,
          'native diagnostic unsigned plan differs')
     plan = json.loads(data)
     root = private_root(mounted, probe)
-    result = run_target(root, plan, probe, target)
+    result = run_target(root, plan, probe, export, target)
     print(json.dumps(result, sort_keys=True))
 
 

@@ -15,9 +15,13 @@ import subprocess
 
 MATERIAL_SOURCE_SHA256 = 'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0'
 ENGINE_SOURCE_SHA256 = '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857'
+PLANNER_SOURCE_SHA256 = '8630eaf86e1e2afbe401415b7724fccfafce80528f3d5c7fbfb669ddfa9671b4'
+SOURCE_PAIRS_SHA256 = '8ac1ec2f3599ededaa0e6aefea9d68a3629e3c9e89'
 TRIVY_MANIFEST_SHA256 = '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c'
 MATERIAL_PLAN_SHA256 = '1bee8f8df904286a1dcddcc23471fa10cfb96b662b4af68feb866cfc18114cd5'
 ENGINE_PLAN_SHA256 = '5c2dfee0e305d5a84a7debb142b7ddbae3b4dc855a89126622449ebbd2c6e993'
+SOURCE_EPOCH = 1790168683  # Exact pinned app commit's committer timestamp.
+UNSIGNED_PLAN_SHA256 = '419ee7114e606f716f4be330fe383bba420f9ac92c9a356f12a34c7bd8b8ae09'
 
 
 def need(condition, message):
@@ -114,7 +118,16 @@ def main():
     release = infra / 'scripts/release'
     same_file(release / 'teleagent-offline-materials.py', MATERIAL_SOURCE_SHA256)
     same_file(release / 'teleagent-offline-engine-materials.py', ENGINE_SOURCE_SHA256)
+    same_file(release / 'teleagent-offline-build-plan.py', PLANNER_SOURCE_SHA256)
     same_file(inputs / 'trivy/manifest.json', TRIVY_MANIFEST_SHA256)
+    pairs_path = authority / 'inputs/teleagent/source-pairs.json'
+    same_file(pairs_path, SOURCE_PAIRS_SHA256)
+    pairs = json.loads(pairs_path.read_bytes())
+    need(type(pairs) is list and len(pairs) == 12 and
+         all(type(row) is dict and set(row) == {'path', 'sha256'} for row in pairs),
+         'exact source-pair record differs')
+    for row in pairs:
+        same_file(app / row['path'], row['sha256'])
     storage = runpy.run_path(str(authority / 'scripts/hosted-storage-admission.py'),
                              run_name='teleagent_projected_storage')
     with storage['admitted_storage']() as (mounted, result):
@@ -145,6 +158,22 @@ def main():
                     maximum=65536))
                 same_file(sealed_materials / 'material-plan.json', MATERIAL_PLAN_SHA256)
                 same_file(sealed_engines / 'engine-plan.json', ENGINE_PLAN_SHA256)
+                planned = fixed(
+                    ['/usr/bin/python3', '-I', str(release / 'teleagent-offline-build-plan.py'),
+                     '--material-plan', str(sealed_materials / 'material-plan.json'),
+                     '--source-pairs', str(pairs_path), '--payload-root', str(release),
+                     '--engine-plan-sha256', ENGINE_PLAN_SHA256,
+                     '--epoch', str(SOURCE_EPOCH)], uid=uid, gid=gid, maximum=65536)
+                plan = json.loads(planned)
+                need(hashlib.sha256(planned).hexdigest() == UNSIGNED_PLAN_SHA256 and
+                     plan['materialPlanSha256'] == MATERIAL_PLAN_SHA256 and
+                     plan['enginePlanSha256'] == ENGINE_PLAN_SHA256 and
+                     plan['sourcePairsSha256'] == SOURCE_PAIRS_SHA256 and
+                     plan['sourceEpoch'] == SOURCE_EPOCH and
+                     all(plan[name] is False for name in
+                         ('executable', 'runtimeAccepted', 'buildExecuted',
+                          'signatureVerified', 'promotionAuthorized')),
+                     'unsigned offline plan authority or bindings differ')
         need(verified['materialProjection']['dataOnly'] is True and
              verified['engineProjection']['dataOnly'] is True and
              verified['buildExecuted'] is False and verified['signatureVerified'] is False,
@@ -152,6 +181,8 @@ def main():
         result['purpose'] = 'bounded-teleagent-data-projection'
         result['materialPlanSha256'] = MATERIAL_PLAN_SHA256
         result['enginePlanSha256'] = ENGINE_PLAN_SHA256
+        result['unsignedBuildPlanSha256'] = UNSIGNED_PLAN_SHA256
+        result['sourceEpoch'] = SOURCE_EPOCH
         result['trivyFreshnessAcceptedForBuild'] = False
         result['privateInputReadOnlyAliasesVerified'] = True
         result['teleagentBuildExecuted'] = False

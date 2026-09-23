@@ -133,8 +133,10 @@ jobs:
             --build-context dependencies="$RUNNER_TEMP/teleagent-musl-dependencies" \
             --build-context materials="$RUNNER_TEMP/teleagent-apk-materials" \
             --file "$RUNNER_TEMP/teleagent-voice-recipe/Dockerfile" \
-            --tag teleagent-voice-diagnostic:20260923 --load \
+            --tag teleagent-voice-diagnostic:20260923 \
+            --output "type=docker,dest=$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar,rewrite-timestamp=true" \
             "$RUNNER_TEMP/teleagent-voice-recipe"
+          docker load --input "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
           test "$(docker image inspect teleagent-voice-diagnostic:20260923 \
             --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
             6cbcc3aadab9053361487d1368c45e74d0a19789
@@ -146,8 +148,6 @@ jobs:
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
             --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \
             -e 'const DB=require("better-sqlite3");const db=new DB(":memory:");db.exec("create table smoke(n integer)");db.close();console.log("VOICE_NATIVE_SMOKE_OK")'
-          docker image save --output "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar" \
-            teleagent-voice-diagnostic:20260923
           sha256sum "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
           echo 'Unsigned functional image diagnostic passed; no scan, release signing or installation was authorized.'
       - name: Retain one-day unsigned image archive for independent comparison

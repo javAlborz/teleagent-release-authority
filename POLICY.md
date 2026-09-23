@@ -12,10 +12,15 @@ Status: **draft; no accepted signer or promotable release**.
 
 These IDs were observed from GitHub's repository API on 2026-09-23. A future
 verifier must compare them to current authenticated metadata and bind an exact
-workflow path, revision and run identity. A repository name by itself is not
-sufficient. The authority workflow must not assume it can read private
-infrastructure source from a public runner; any required private input needs a
-separately reviewed, minimal transfer and a digest bound to the release.
+   workflow path, revision and run identity. A repository name by itself is not
+   sufficient. The temporary read-only deploy key in the branch-restricted
+   `teleagent-private-source-read` Actions environment permits this authority
+   workflow to read the private infrastructure repository. Its sparse checkout
+   reduces copied content but the key can read the whole repository. Run
+   `35900580601` proved a pinned read-only checkout and five file hashes on a
+   public hosted runner without executing source. This does not admit that
+   source as a release or authorize a build. Revoke the key and environment
+   secret after the reviewed build path no longer needs them.
 
 ## Required evidence before signing
 
@@ -45,12 +50,13 @@ separately reviewed, minimal transfer and a digest bound to the release.
 
 ## Current refusal state
 
-No workflow or trusted signing root is selected or installed here. There are
-no repository secrets, signing keys, OIDC grants, release artifacts, or
-promotion dispatches in this candidate. The source-only draft infrastructure
-PRs do not meet the build or signing requirements above. Keep the live phone
-locked until an independently verified release and installation satisfy every
-remaining gate.
+No build, comparison, signing or deployment workflow or trusted signing root
+is selected or installed here. The sole Actions environment secret is the
+temporary private-infrastructure read key described above; there are no
+signing keys, OIDC grants, release artifacts or promotion dispatches. The
+source-only draft infrastructure PRs do not meet the build or signing
+requirements above. Keep the live phone locked until an independently
+verified release and installation satisfy every remaining gate.
 
 ## Solo-owner source governance
 

@@ -27,13 +27,13 @@ jobs:
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
-          for run_id in 35929953780 35930052326; do
+          for run_id in 35933786693 35933788586; do
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
               --jq '[.status,.conclusion,.head_sha,.head_branch,.repository.full_name] | @tsv' \
               | { read -r status conclusion head_sha branch repository
                   test "$status" = completed
                   test "$conclusion" = success
-                  test "$head_sha" = a82419121788bcd3ca37e417944cc7a53819d3de
+                  test "$head_sha" = 3ca573d1c62e473851913e3107e3aacdc9de5232
                   test "$branch" = feat/hosted-capacity-probe-20260923
                   test "$repository" = javAlborz/teleagent-release-authority
                 }
@@ -44,7 +44,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for run_id in 35929953780 35930052326; do
+          for run_id in 35933786693 35933788586; do
             mkdir -m 0700 "$RUNNER_TEMP/$run_id"
             gh run download "$run_id" --repo "$GITHUB_REPOSITORY" \
               --name unsigned-voice-image-diagnostic --dir "$RUNNER_TEMP/$run_id"
@@ -53,17 +53,17 @@ jobs:
             test "$(stat -c %s "$path")" -ge 70000000
             test "$(stat -c %s "$path")" -le 500000000
             printf '%s  %s\n' \
-              632c5457ec0030ba105f32200deae684d0619ecbb6ebd41afb1a45d3f2860128 \
+              3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01 \
               "$path" | sha256sum --check --status
           done
           cmp --silent \
-            "$RUNNER_TEMP/35929953780/teleagent-voice-image-diagnostic.docker.tar" \
-            "$RUNNER_TEMP/35930052326/teleagent-voice-image-diagnostic.docker.tar"
+            "$RUNNER_TEMP/35933786693/teleagent-voice-image-diagnostic.docker.tar" \
+            "$RUNNER_TEMP/35933788586/teleagent-voice-image-diagnostic.docker.tar"
       - name: Inspect archive identity as data, without loading or executing
         shell: bash
         run: |
           set -euo pipefail
-          python3 -I - "$RUNNER_TEMP/35929953780/teleagent-voice-image-diagnostic.docker.tar" <<'PY'
+          python3 -I - "$RUNNER_TEMP/35933786693/teleagent-voice-image-diagnostic.docker.tar" <<'PY'
           import json
           import re
           import sys
@@ -83,7 +83,7 @@ jobs:
               assert config_member.isfile() and config_member.size < 1048576
               config = json.load(archive.extractfile(config_member))
               labels = config['config']['Labels']
-              assert labels['org.opencontainers.image.revision'] == '6cbcc3aadab9053361487d1368c45e74d0a19789'
+              assert labels['org.opencontainers.image.revision'] == '4279253269c71acfda20916707d26b4e51591c16'
               print('Two independent hosted image archives are byte-identical and contain the expected source label.')
               print('signatureVerified=false releaseApproved=false scanApproved=false installed=false')
           PY

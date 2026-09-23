@@ -114,6 +114,32 @@ def download(opener, url, digest, size, target, deadline):
         os.fsync(output.fileno())
 
 
+def copy_pinned_index(inputs, digest, size, target):
+    source = inputs / 'index-objects' / digest
+    descriptor('https://dl-cdn.alpinelinux.org/', digest, size)
+    fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        before = os.fstat(fd)
+        need(stat.S_ISREG(before.st_mode) and before.st_nlink == 1 and
+             before.st_size == size, 'pinned index object metadata differs')
+        count, sha = 0, hashlib.sha256()
+        with target.open('xb') as output:
+            while True:
+                data = os.read(fd, min(1024 * 1024, size + 1 - count))
+                if not data:
+                    break
+                count += len(data)
+                need(count <= size, 'pinned index exceeds size')
+                sha.update(data)
+                output.write(data)
+            need(count == size and sha.hexdigest() == digest and
+                 os.fstat(fd) == before, 'pinned index bytes changed')
+            output.flush()
+            os.fsync(output.fileno())
+    finally:
+        os.close(fd)
+
+
 def acquire(inputs, output):
     need(os.geteuid() != 0 and inputs.is_absolute() and output.is_absolute() and
          output.parent.is_dir(), 'unprivileged absolute paths required')
@@ -154,7 +180,10 @@ def acquire(inputs, output):
         if kind in records:
             (child / 'manifest.json').write_bytes(records[kind][0])
         for name, url, digest, size in items:
-            download(opener, url, digest, size, child / name, deadline)
+            if kind == 'indexes':
+                copy_pinned_index(inputs, digest, size, child / name)
+            else:
+                download(opener, url, digest, size, child / name, deadline)
             total += size
         print(json.dumps({'kind': kind, 'objects': len(items), 'bytesDownloaded': total}), flush=True)
     return {'status': 'data-only', 'downloadedBytes': total, 'executablesRun': False,

@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/teleagent-material-data-projection.yml
       - scripts/acquire-teleagent-fixed-inputs.py
+      - scripts/bind-teleagent-trivy-reference.py
       - scripts/verify-teleagent-data-projection.py
       - inputs/teleagent/**
   workflow_dispatch:
@@ -87,6 +88,13 @@ jobs:
           python3 -I authority/scripts/acquire-teleagent-fixed-inputs.py \
             --inputs "$GITHUB_WORKSPACE/authority/inputs/teleagent" \
             --output "$RUNNER_TEMP/teleagent-inputs/fixed"
+      - name: Bind identical fresh Trivy objects to the fixed reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I authority/scripts/bind-teleagent-trivy-reference.py \
+            --acquired "$RUNNER_TEMP/teleagent-inputs/trivy" \
+            --reference "$GITHUB_WORKSPACE/authority/inputs/teleagent/trivy.json"
       - name: Require exact acquired manifest bindings
         shell: bash
         run: |

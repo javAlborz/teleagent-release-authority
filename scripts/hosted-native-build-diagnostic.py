@@ -27,9 +27,9 @@ import uuid
 HERE = Path(__file__).resolve().parent
 PROBE_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-hosted-runc-probe.py'
 EXPORT_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-offline-export-inventory.py'
-EXPORT_SHA256 = 'c3b5edce6e05b087dedce0fb85a4bc6fd1db05fc2fb3a8c7c72ef1c72ef6a454'
+EXPORT_SHA256 = '944f425f95adb5a3ddd8a7149f7a7c43b069cbf649cd172023ea8834d030daca'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
-PLAN_SHA256 = 'a0534189bc561ce59b7140429f10c4a57911057a4239c66db708dba89f617886'
+PLAN_SHA256 = 'd4e035a78fa22011851a7e72fa108b8f94f3fdab835add9bc13626d43284ea8f'
 TARGETS = frozenset(('glibc', 'musl'))
 ENGINE = {
     'buildctl': (34512200, '0b45ae3696f836bf711dbd78138e403924d7733f0b2328ba29a7fcf9ad5f1dfd'),
@@ -322,16 +322,20 @@ def run_target(root, plan, probe, export, target):
                 daemon.wait(timeout=10)
                 adapter.close()
         observed = export['inventory'](Path('/outputs') / target, target)
-        need(observed['runEvidence']['sha256'] ==
+        need(observed['runEvidence']['receipt']['sha256'] ==
              hashlib.sha256(receipt.read_bytes()).hexdigest() and
+             observed['logReferencesVerified'] is True and
+             observed['logsExported'] is True and
              observed['releaseApproved'] is False and
              observed['independentRebuild'] is False,
              'native export inventory differs')
         return {'target': target, 'phases': records,
-                'receiptSha256': observed['runEvidence']['sha256'],
+                'receiptSha256': observed['runEvidence']['receipt']['sha256'],
                 'dependencySubjectSha256': observed['subjectSha256'],
                 'dependencyBytes': observed['dependencyBytes'],
                 'dependencyEntries': len(observed['subject']['entries']),
+                'runLogFiles': sum(row['type'] == 'file' for row in
+                                   observed['runEvidence']['logs']),
                 'unsignedNativeBuildDiagnostic': True,
                 'releaseAuthority': False}
     finally:

@@ -1,0 +1,160 @@
+name: Teleagent attestation plumbing fixture only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-attestation-fixture.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build_fixture:
+    name: build-literal-fixture-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require exact public hosted branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Write only the fixed harmless fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-attestation-fixture"
+          printf 'teleagent-attestation-fixture-v1\n' \
+            > "$RUNNER_TEMP/teleagent-attestation-fixture/fixture.txt"
+          printf '%s\n' \
+            '3df087e182adb9806eb7240328b9f2cbadf36ff87b34b029bcf23d81fe6eabf5  '"$RUNNER_TEMP"'/teleagent-attestation-fixture/fixture.txt' \
+            | sha256sum --check --status
+      - name: Pass only the literal fixture to a separate signer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-attestation-literal-fixture
+          path: ${{ runner.temp }}/teleagent-attestation-fixture/fixture.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  sign_fixture:
+    name: sign-literal-fixture-no-release
+    needs: build_fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Require exact separate public hosted signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read fixed literal fixture
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-attestation-literal-fixture
+          path: ${{ runner.temp }}/teleagent-attestation-fixture
+      - name: Bind fixture bytes before signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find "$RUNNER_TEMP/teleagent-attestation-fixture" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 1
+          printf '%s\n' \
+            '3df087e182adb9806eb7240328b9f2cbadf36ff87b34b029bcf23d81fe6eabf5  '"$RUNNER_TEMP"'/teleagent-attestation-fixture/fixture.txt' \
+            | sha256sum --check --status
+      - name: Attest only the literal plumbing fixture
+        id: attest
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: ${{ runner.temp }}/teleagent-attestation-fixture/fixture.txt
+      - name: Retain only the fixture Sigstore bundle
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-attestation-bundle"
+          test -f "$ATTESTATION_BUNDLE"
+          cp -- "$ATTESTATION_BUNDLE" \
+            "$RUNNER_TEMP/teleagent-attestation-bundle/bundle.json"
+          test -s "$RUNNER_TEMP/teleagent-attestation-bundle/bundle.json"
+      - name: Pass fixture bundle to a separate consuming verifier
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-attestation-literal-bundle
+          path: ${{ runner.temp }}/teleagent-attestation-bundle/bundle.json
+          if-no-files-found: error
+          retention-days: 1
+
+  verify_fixture:
+    name: consume-literal-fixture-attestation-no-release
+    needs: sign_fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Require exact separate public hosted verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read literal fixture
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-attestation-literal-fixture
+          path: ${{ runner.temp }}/teleagent-attestation-fixture
+      - name: Read literal fixture bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-attestation-literal-bundle
+          path: ${{ runner.temp }}/teleagent-attestation-bundle
+      - name: Cryptographically verify exact fixture and certified signer identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            '3df087e182adb9806eb7240328b9f2cbadf36ff87b34b029bcf23d81fe6eabf5  '"$RUNNER_TEMP"'/teleagent-attestation-fixture/fixture.txt' \
+            | sha256sum --check --status
+          gh attestation verify "$RUNNER_TEMP/teleagent-attestation-fixture/fixture.txt" \
+            --bundle "$RUNNER_TEMP/teleagent-attestation-bundle/bundle.json" \
+            --repo javAlborz/teleagent-release-authority \
+            --signer-workflow javAlborz/teleagent-release-authority/.github/workflows/teleagent-attestation-fixture.yml \
+            --signer-digest "$GITHUB_SHA" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref refs/heads/feat/hosted-capacity-probe-20260923 \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --predicate-type https://slsa.dev/provenance/v1 \
+            --format json > "$RUNNER_TEMP/teleagent-attestation-verified.json"
+          python3 -I - "$RUNNER_TEMP/teleagent-attestation-verified.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          assert 0 < path.stat().st_size <= 1024 * 1024
+          records = json.loads(path.read_bytes())
+          assert type(records) is list and len(records) == 1
+          result = records[0]['verificationResult']
+          statement = result['statement']
+          assert statement['predicateType'] == 'https://slsa.dev/provenance/v1'
+          assert type(statement['subject']) is list and len(statement['subject']) == 1
+          assert statement['subject'][0]['digest'] == {
+              'sha256': '3df087e182adb9806eb7240328b9f2cbadf36ff87b34b029bcf23d81fe6eabf5'}
+          assert type(result['signature']['certificate']) is dict
+          print({'schema': 'teleagent.attestation-plumbing-fixture.v1',
+                 'fixtureVerified': True, 'releaseApproved': False})
+          PY

@@ -48,6 +48,7 @@ class RetainedCompareTests(unittest.TestCase):
                     (package / 'package.json').write_bytes(b'{}\n')
                     (package / 'node_modules').mkdir()
                     (package / 'node_modules/data').write_bytes(b'fixed dependency')
+                    (package / 'node_modules' / ('é' * 55 + '.json')).write_bytes(b'long-name bytes')
                 logs = root / 'run-logs'
                 logs.mkdir()
                 run_log = ('log ' + replica).encode()

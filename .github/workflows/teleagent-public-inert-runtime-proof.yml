@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 4ab6042cd36fe82c856096f4d07748af332ae64e
+          ref: 3e3dccfcf71351243fb767dbc78555e5c0c5c394
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C infrastructure rev-parse HEAD)" = 4ab6042cd36fe82c856096f4d07748af332ae64e
+          test "$(git -C infrastructure rev-parse HEAD)" = 3e3dccfcf71351243fb767dbc78555e5c0c5c394
           test -z "$(git -C infrastructure status --porcelain)"
           work="$(mktemp -d /tmp/teleagent-runc-probe-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)"
           test "$(stat -c %a "$work")" = 700

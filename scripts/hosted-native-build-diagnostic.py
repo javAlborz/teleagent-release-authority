@@ -28,6 +28,7 @@ HERE = Path(__file__).resolve().parent
 PROBE_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-hosted-runc-probe.py'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
 PLAN_SHA256 = 'c641f38721e1f38be2829262e713ecb61e62b3e79aec90917e75ba42968961d3'
+TARGETS = frozenset(('glibc', 'musl'))
 ENGINE = {
     'buildctl': (34512200, '0b45ae3696f836bf711dbd78138e403924d7733f0b2328ba29a7fcf9ad5f1dfd'),
     'buildkitd': (80466872, '157da954fa081d9ec4f063d62029fbbf12437c1d47ab63080594eae5a85b36f2'),
@@ -159,7 +160,7 @@ def private_root(mounted, probe):
     for name in ('probe', 'proc', 'sys/fs/cgroup', 'dev', 'etc', 'tmp', 'state',
                  'run/teleagent-build', 'infra/bin', 'infra/context',
                  'infra/empty-provenance', 'infra/empty-docker-config',
-                 'infra/glibc', 'engines/bin', 'inputs/app', 'materials',
+                 'infra/glibc', 'infra/musl', 'engines/bin', 'inputs/app', 'materials',
                  'outputs', 'private-home'):
         (private / name).mkdir(mode=0o700, parents=True, exist_ok=True)
     for name, source in (
@@ -202,13 +203,14 @@ def private_root(mounted, probe):
     return Path('/probe')
 
 
-def run_target(root, plan, probe):
+def run_target(root, plan, probe, target):
+    need(target in TARGETS, 'native diagnostic target differs')
     jobs = probe['JOB_CGROUP']['create_and_enter_control'](scope := {})
     try:
         (root / 'ownership').mkdir(mode=0o700)
         (root / 'projected-bundles').mkdir(mode=0o700)
         Path('/run/teleagent-build/runc').mkdir(mode=0o700)
-        Path('/outputs/glibc').mkdir(mode=0o700)
+        (Path('/outputs') / target).mkdir(mode=0o700)
         for generated in plan['generatedFiles']:
             path = Path('/infra') / generated['path']
             path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -244,7 +246,7 @@ def run_target(root, plan, probe):
                     need(daemon.poll() is None, 'native BuildKit daemon exited before socket')
                     time.sleep(0.05)
                 need(socket_path.is_socket(), 'native BuildKit socket missing')
-                stage = next(row for row in plan['serialStages'] if row['target'] == 'glibc')
+                stage = next(row for row in plan['serialStages'] if row['target'] == target)
                 command = [str(root / 'engine-launch'), '--client', *stage['buildctlArgv'][1:]]
                 build_log = root / 'buildctl.log'
                 with build_log.open('xb') as build_stream:
@@ -254,13 +256,13 @@ def run_target(root, plan, probe):
                                               stderr=subprocess.STDOUT,
                                               start_new_session=True)
                     try:
-                        ledger = probe['SEQUENCE']['Sequence']('glibc', plan['sourceEpoch'])
+                        ledger = probe['SEQUENCE']['Sequence'](target, plan['sourceEpoch'])
                         records = []
                         for phase in ('prepare', 'payload'):
                             try:
                                 observed = probe['adapter_handoff'](
                                     root, adapter, invocation_id, boot_id, daemon_pid,
-                                    target='glibc', phase=phase,
+                                    target=target, phase=phase,
                                     epoch=plan['sourceEpoch'], sequence=ledger,
                                     deadline_seconds=1800)
                             except Exception as error:
@@ -303,7 +305,7 @@ def run_target(root, plan, probe):
                         need(client.wait(timeout=1800) == 0 and
                              build_log.stat().st_size <= 8 * 1024 * 1024,
                              'native BuildKit solve failed or log exceeded bound')
-                        receipt = Path('/outputs/glibc/build-receipt.json')
+                        receipt = Path('/outputs') / target / 'build-receipt.json'
                         need(receipt.is_file() and 0 < receipt.stat().st_size <= 4 * 1024 * 1024,
                              'native build receipt is missing or exceeds bound')
                     finally:
@@ -317,7 +319,7 @@ def run_target(root, plan, probe):
                     (jobs / 'engine/cgroup.kill').write_text('1\n')
                 daemon.wait(timeout=10)
                 adapter.close()
-        return {'target': 'glibc', 'phases': records,
+        return {'target': target, 'phases': records,
                 'receiptSha256': hashlib.sha256(receipt.read_bytes()).hexdigest(),
                 'unsignedNativeBuildDiagnostic': True,
                 'releaseAuthority': False}
@@ -327,7 +329,8 @@ def run_target(root, plan, probe):
             os.close(scope['returnFd'])
 
 
-def inside(mounted):
+def inside(mounted, target):
+    need(target in TARGETS, 'native diagnostic target differs')
     need(os.getpid() == 1 and not any(
         line.strip().startswith('0.0.0.0') for line in
         Path('/proc/net/route').read_text().splitlines()),
@@ -340,11 +343,12 @@ def inside(mounted):
          'native diagnostic unsigned plan differs')
     plan = json.loads(data)
     root = private_root(mounted, probe)
-    result = run_target(root, plan, probe)
+    result = run_target(root, plan, probe, target)
     print(json.dumps(result, sort_keys=True))
 
 
-def projected(*, mounted, materials, engines, app, payload, plan):
+def projected(*, mounted, materials, engines, app, payload, plan, target):
+    need(target in TARGETS, 'native diagnostic target differs')
     need(plan['schema'] == 'teleagent.offline-build-plan.v1' and
          plan['sourceEpoch'] == 1790168683 and
          plan['buildExecuted'] is False, 'native diagnostic plan identity differs')
@@ -361,12 +365,12 @@ def projected(*, mounted, materials, engines, app, payload, plan):
                str(mounted / 'native-tools' / name), str(infra / source)], timeout=90)
     result = fixed(['/usr/bin/unshare', '--mount', '--net', '--pid', '--fork',
                     '--mount-proc', '/usr/bin/python3', '-I', str(Path(__file__).resolve()),
-                    '--inside', str(mounted)], timeout=3700, maximum=65536)
+                    '--inside', str(mounted), target], timeout=3700, maximum=65536)
     return json.loads(result)
 
 
 def main():
-    need(len(sys.argv) in (3, 4) and sys.argv[1] in ('--hosted', '--inside'),
+    need(len(sys.argv) in (4, 5) and sys.argv[1] in ('--hosted', '--inside'),
          'native diagnostic arguments differ')
     expected = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8',
                 'LC_ALL': 'C.UTF-8', 'GITHUB_ACTIONS': 'true',
@@ -378,14 +382,16 @@ def main():
          all(os.environ[key] == value for key, value in expected.items()),
          'native diagnostic hosted guard differs')
     if sys.argv[1] == '--inside':
-        need(len(sys.argv) == 3 and re.fullmatch(
+        need(len(sys.argv) == 4 and re.fullmatch(
             r'/tmp/teleagent-storage-admission-[A-Za-z0-9_]+/mounted', sys.argv[2]),
             'native diagnostic quota path differs')
-        inside(Path(sys.argv[2]))
+        inside(Path(sys.argv[2]), sys.argv[3])
     else:
-        need(len(sys.argv) == 4, 'native diagnostic hosted arguments differ')
+        need(len(sys.argv) == 5 and sys.argv[4] in TARGETS,
+             'native diagnostic hosted arguments differ')
         module = runpy.run_path(str(PROJECT_PATH), run_name='native_diagnostic_projection')
-        result = module['project'](on_projected=projected,
+        result = module['project'](on_projected=lambda **kwargs: projected(
+                                       target=sys.argv[4], **kwargs),
                                    workspace=Path(sys.argv[2]),
                                    runner_temp=Path(sys.argv[3]))
         need(result['cleanupVerified'] is True and

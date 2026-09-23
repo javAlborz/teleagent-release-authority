@@ -15,9 +15,14 @@ permissions:
 
 jobs:
   project:
+    name: unsigned-${{ matrix.target }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment: teleagent-private-source-read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [glibc, musl]
     steps:
       - name: Require the exact hosted authority branch and admission space
         shell: bash
@@ -102,7 +107,7 @@ jobs:
             'bcde585dc9f5ac35c932c60f28004cd269e124f5a1a09a73f3335b3a56091d8f  '"$RUNNER_TEMP"'/teleagent-inputs/oci/manifest.json' \
             '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c  '"$RUNNER_TEMP"'/teleagent-inputs/trivy/manifest.json' \
             | sha256sum --check --status
-      - name: Run isolated unsigned glibc dependency diagnostic
+      - name: Run isolated unsigned dependency diagnostic
         shell: bash
         run: |
           set -euo pipefail
@@ -111,5 +116,5 @@ jobs:
             GITHUB_REPOSITORY=javAlborz/teleagent-release-authority \
             GITHUB_REF=refs/heads/feat/hosted-capacity-probe-20260923 \
             /usr/bin/python3 -I authority/scripts/hosted-native-build-diagnostic.py \
-            --hosted "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+            --hosted "$GITHUB_WORKSPACE" "$RUNNER_TEMP" "${{ matrix.target }}"
           echo 'Unsigned diagnostic completed; no release, scanner, signer or installation was authorized.'

@@ -2,7 +2,7 @@
 
 This public repository is the selected home for independent Teleagent release
 verification and signing. **It is not operational.** A branch-only
-diagnostic can attempt one unsigned glibc dependency build in a disposable
+diagnostic can attempt unsigned glibc and musl dependency builds in separate disposable
 hosted volume. It discards its output. There is no release build, comparison,
 attestation, signing, or deployment workflow here yet. Nothing in this
 repository currently authorizes a release or a phone deployment.

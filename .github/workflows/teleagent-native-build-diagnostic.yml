@@ -6,6 +6,8 @@ on:
       - feat/hosted-capacity-probe-20260923
     paths:
       - .github/workflows/teleagent-native-build-diagnostic.yml
+      - scripts/hosted-native-build-diagnostic.py
+      - scripts/project-teleagent-data-in-quota.py
   workflow_dispatch:
 
 permissions:

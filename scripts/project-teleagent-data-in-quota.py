@@ -149,7 +149,7 @@ def project(on_projected=None, *, workspace=None, runner_temp=None):
         parser.add_argument('--runner-temp', required=True, type=Path)
         args = parser.parse_args()
         workspace, runner_temp = args.workspace, args.runner_temp
-    need(type(workspace) is Path and type(runner_temp) is Path,
+    need(isinstance(workspace, Path) and isinstance(runner_temp, Path),
          'projection roots must be paths')
     need(workspace.is_absolute() and runner_temp.is_absolute() and
          workspace.is_dir() and runner_temp.is_dir() and

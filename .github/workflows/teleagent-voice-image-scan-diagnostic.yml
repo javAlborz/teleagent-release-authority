@@ -6,6 +6,7 @@ on:
       - feat/hosted-capacity-probe-20260923
     paths:
       - .github/workflows/teleagent-voice-image-scan-diagnostic.yml
+      - scripts/verify-voice-scan-diagnostic.py
   workflow_dispatch:
 
 permissions:
@@ -18,6 +19,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
       - name: Require exact hosted context and successful independent comparison
         shell: bash
         env:
@@ -93,28 +98,18 @@ jobs:
             --skip-check-update --disable-telemetry --no-progress \
             --cache-dir "$cache" --format json --exit-code 0 \
             --output "$RUNNER_TEMP/teleagent-trivy/scan.json"
-          python3 -I - "$RUNNER_TEMP/teleagent-trivy/scan.json" <<'PY'
-          from collections import Counter
-          import json
-          import sys
-          from pathlib import Path
-          report = json.loads(Path(sys.argv[1]).read_bytes())
-          assert report['SchemaVersion'] == 2
-          findings = Counter()
-          targets = []
-          for row in report.get('Results', []):
-              targets.append(row['Target'])
-              for issue in row.get('Vulnerabilities') or []:
-                  findings[issue['Severity']] += 1
-          assert targets, 'scanner reported no targets'
-          print('Diagnostic scan targets:', len(targets))
-          print('Diagnostic vulnerability counts:', dict(sorted(findings.items())))
-          print('scanExecuted=true scanApproved=false signatureVerified=false releaseApproved=false installed=false')
-          PY
+          python3 -I scripts/verify-voice-scan-diagnostic.py \
+            --image "$RUNNER_TEMP/voice-image/teleagent-voice-image-diagnostic.docker.tar" \
+            --report "$RUNNER_TEMP/teleagent-trivy/scan.json" \
+            --metadata "$cache/db/metadata.json" \
+            > "$RUNNER_TEMP/teleagent-trivy/scan-check.json"
+          cat "$RUNNER_TEMP/teleagent-trivy/scan-check.json"
       - name: Retain one-day diagnostic scan report for triage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: unsigned-voice-image-scan-diagnostic
-          path: ${{ runner.temp }}/teleagent-trivy/scan.json
+          path: |
+            ${{ runner.temp }}/teleagent-trivy/scan.json
+            ${{ runner.temp }}/teleagent-trivy/scan-check.json
           if-no-files-found: error
           retention-days: 1

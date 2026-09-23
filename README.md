@@ -1,9 +1,11 @@
 # Teleagent release authority
 
 This public repository is the selected home for independent Teleagent release
-verification and signing. **It is not operational.** There is no build,
-comparison, attestation, signing, or deployment workflow here yet. Nothing in
-this repository currently authorizes a release or a phone deployment.
+verification and signing. **It is not operational.** A branch-only manual
+diagnostic can attempt one unsigned glibc dependency build in a disposable
+hosted volume. It discards its output. There is no release build, comparison,
+attestation, signing, or deployment workflow here yet. Nothing in this
+repository currently authorizes a release or a phone deployment.
 
 The initial [release policy](POLICY.md) is a review draft. The public `main`
 branch requires a pull request, including for administrators, and has linear

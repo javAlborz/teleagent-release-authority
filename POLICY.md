@@ -50,8 +50,10 @@ verifier must compare them to current authenticated metadata and bind an exact
 
 ## Current refusal state
 
-No build, comparison, signing or deployment workflow or trusted signing root
-is selected or installed here. The sole Actions environment secret is the
+No release build, comparison, signing or deployment workflow or trusted signing
+root is selected or installed here. The manual unsigned glibc diagnostic is
+ephemeral and does not produce an admitted release artifact. The sole Actions
+environment secret is the
 temporary private-infrastructure read key described above; there are no
 signing keys, OIDC grants, release artifacts or promotion dispatches. The
 source-only draft infrastructure PRs do not meet the build or signing

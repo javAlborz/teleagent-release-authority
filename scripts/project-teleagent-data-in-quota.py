@@ -140,13 +140,17 @@ def sealed_alias(source, alias):
         alias.rmdir()
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--workspace', required=True, type=Path)
-    parser.add_argument('--runner-temp', required=True, type=Path)
-    args = parser.parse_args()
-    workspace = args.workspace
-    runner_temp = args.runner_temp
+def project(on_projected=None, *, workspace=None, runner_temp=None):
+    if workspace is None or runner_temp is None:
+        need(workspace is None and runner_temp is None and on_projected is None,
+             'projection requires both exact hosted roots')
+        parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument('--workspace', required=True, type=Path)
+        parser.add_argument('--runner-temp', required=True, type=Path)
+        args = parser.parse_args()
+        workspace, runner_temp = args.workspace, args.runner_temp
+    need(type(workspace) is Path and type(runner_temp) is Path,
+         'projection roots must be paths')
     need(workspace.is_absolute() and runner_temp.is_absolute() and
          workspace.is_dir() and runner_temp.is_dir() and
          workspace.name == 'teleagent-release-authority' and
@@ -233,6 +237,11 @@ def main():
                             same_file(sealed_app / row['path'], row['sha256'])
                         for row in plan['payloadSourceClosure']:
                             same_file(sealed_payload / row['path'], row['sha256'])
+                        if on_projected is not None:
+                            result['projectedCallbackResult'] = on_projected(
+                                mounted=mounted, materials=sealed_materials,
+                                engines=sealed_engines, app=sealed_app,
+                                payload=sealed_payload, plan=plan)
                 need(app_count == 12 and payload_count == 3,
                      'small source closure projection count differs')
         need(verified['materialProjection']['dataOnly'] is True and
@@ -248,11 +257,15 @@ def main():
         result['privateInputReadOnlyAliasesVerified'] = True
         result['appSourcePairFilesProjected'] = app_count
         result['payloadSourceFilesProjected'] = payload_count
-        result['teleagentBuildExecuted'] = False
+        result['teleagentBuildExecuted'] = on_projected is not None
         mounted.parent.chmod(0o700)
     need(result['cleanupVerified'] is True and result['afterWorkloadQuota']['availableBytes'] >=
          20 * 1024 ** 3, 'bounded material projection consumed unexpected quota')
-    print(json.dumps(result, sort_keys=True))
+    return result
+
+
+def main():
+    print(json.dumps(project(), sort_keys=True))
 
 
 if __name__ == '__main__':

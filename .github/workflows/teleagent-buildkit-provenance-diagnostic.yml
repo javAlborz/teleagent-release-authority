@@ -53,7 +53,6 @@ jobs:
             "$RUNNER_TEMP/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.tar.gz" \
             --bundle "$RUNNER_TEMP/teleagent-buildkit-provenance/buildkit-v0.33.0.linux-amd64.sigstore.json" \
             --repo moby/buildkit \
-            --signer-repo docker/github-builder \
             --cert-identity https://github.com/docker/github-builder/.github/workflows/bake.yml@58cb9f5b71b1836d6f690c1e95effdeb9b98cb8a \
             --source-digest dddd5621af04ea57823085c93a063383f71d3173 \
             --source-ref refs/tags/v0.33.0 \

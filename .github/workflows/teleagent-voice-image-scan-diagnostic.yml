@@ -27,12 +27,12 @@ jobs:
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35930416210" \
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35933905774" \
             --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
             | { read -r status conclusion head_sha branch
                 test "$status" = completed
                 test "$conclusion" = success
-                test "$head_sha" = 2aba5caffd62eb4246bcf5717fc8aceb862aa8ab
+                test "$head_sha" = d21efeadd5a23be4127133bcee9a666a391cf756
                 test "$branch" = feat/hosted-capacity-probe-20260923
               }
       - name: Retrieve fixed unsigned image archive
@@ -42,12 +42,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/voice-image"
-          gh run download 35929953780 --repo "$GITHUB_REPOSITORY" \
+          gh run download 35933786693 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-voice-image-diagnostic --dir "$RUNNER_TEMP/voice-image"
           image="$RUNNER_TEMP/voice-image/teleagent-voice-image-diagnostic.docker.tar"
           test -f "$image"
           printf '%s  %s\n' \
-            632c5457ec0030ba105f32200deae684d0619ecbb6ebd41afb1a45d3f2860128 \
+            3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01 \
             "$image" | sha256sum --check --status
       - name: Verify exact Trivy archive and contained executable bytes
         shell: bash

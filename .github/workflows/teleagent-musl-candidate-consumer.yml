@@ -1,6 +1,13 @@
 name: Teleagent unsigned musl candidate consumer only
 
 on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-musl-candidate-consumer.yml
+      - scripts/extract-verified-musl-dependencies.py
+      - scripts/test_extract_verified_musl_dependencies.py
   workflow_dispatch:
 
 permissions:

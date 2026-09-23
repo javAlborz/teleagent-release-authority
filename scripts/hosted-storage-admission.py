@@ -95,6 +95,14 @@ def main():
             raise OSError(ctypes.get_errno(), 'private storage mount propagation failed')
         fixed(['/usr/sbin/mkfs.ext4', '-q', '-F', '-m', '0', '-N', '2000000', str(image)],
               timeout=120)
+        # mke2fs may punch unused ranges out of an image. Reserve them again
+        # after formatting so the loop filesystem cannot outrun its backing.
+        os.posix_fallocate(image_fd, 0, IMAGE_BYTES)
+        os.fsync(image_fd)
+        need(os.fstat(image_fd).st_blocks * 512 >= IMAGE_BYTES,
+             'formatted image lost its fully allocated backing')
+        need(initial['availableBytes'] - space('/tmp')['availableBytes'] >= IMAGE_BYTES - GIB,
+             'formatted image did not consume the expected host allocation')
         fixed(['/usr/bin/mount', '--no-mtab', '-t', 'ext4', '-o',
                'loop,nosuid,nodev,noexec', str(image), str(mountpoint)])
         need(mountpoint.stat().st_dev != original_device,
@@ -104,11 +112,15 @@ def main():
         need(0 < measured['filesystemBytes'] <= IMAGE_BYTES and
              measured['availableBytes'] >= MIN_BUILD_AVAILABLE and
              100000 <= measured['filesystemInodes'] <= 3000000 and
-             host_after['availableBytes'] >= MIN_HOST_RESERVE,
+             host_after['availableBytes'] >= MIN_HOST_RESERVE and
+             initial['availableBytes'] - host_after['availableBytes'] >= IMAGE_BYTES - GIB and
+             os.fstat(image_fd).st_blocks * 512 >= IMAGE_BYTES,
              'mounted quota or host reserve differs')
         result = {'purpose': 'inert-release-storage-admission',
                   'initialHost': initial, 'postAllocationHost': host_after,
                   'quotaImageBytes': IMAGE_BYTES, 'mountedQuota': measured,
+                  'hostAllocatedDeltaBytes': initial['availableBytes'] -
+                                             host_after['availableBytes'],
                   'minimumBuildAvailableBytes': MIN_BUILD_AVAILABLE,
                   'minimumHostReserveBytes': MIN_HOST_RESERVE,
                   'buildPeakMeasured': False, 'teleagentBuildExecuted': False}

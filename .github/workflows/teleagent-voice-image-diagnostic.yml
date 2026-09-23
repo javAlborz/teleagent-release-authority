@@ -139,6 +139,10 @@ jobs:
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
             --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \
+            -e 'const fs=require("node:fs");for(const p of ["/app/voice-app/node_modules","/app/voice-app/node_modules/better-sqlite3","/app/voice-app/node_modules/node_modules/better-sqlite3"]){console.log(p,fs.existsSync(p))}console.log(require.resolve.paths("better-sqlite3"))'
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 64 --memory 512m \
+            --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \
             -e 'const DB=require("better-sqlite3");const db=new DB(":memory:");db.exec("create table smoke(n integer)");db.close();console.log("VOICE_NATIVE_SMOKE_OK")'
           docker image save --output "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar" \
             teleagent-voice-diagnostic:20260923

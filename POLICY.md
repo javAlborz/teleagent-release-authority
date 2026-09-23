@@ -57,7 +57,10 @@ manually dispatched. By default it discards compiled outputs. An explicit
 experimental mode retains and reconstructs bounded unsigned dependency tars
 for one day. Neither mode produces an admitted release artifact. A separate
 branch-only fixture attests only fixed harmless text and verifies its certified
-workflow identity; it grants no Teleagent release authority. The sole Actions
+workflow identity; it grants no Teleagent release authority. A separate hosted
+diagnostic verifies the selected BuildKit archive's upstream Sigstore bundle,
+subject and exact signer/source identity; that upstream claim does not approve
+any Teleagent artifact. The sole Actions
 environment secret is the
 temporary private-infrastructure read key described above; there are no
 signing keys, OIDC grants, release artifacts or promotion dispatches. The

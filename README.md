@@ -10,8 +10,11 @@ experimental input also retains bounded unsigned dependency tars for one day
 and reconstructs their subjects in a separate comparison job. These are
 intermediate candidates, not release images or bundles. A separate three-job
 fixture signs and verifies only fixed harmless text to exercise GitHub's
-attestation plumbing. There is no release artifact, image comparison, release
-attestation, release signing or deployment workflow here yet.
+attestation plumbing. A hosted diagnostic separately verifies the exact public
+BuildKit v0.33.0 archive and its upstream Sigstore provenance against the
+reviewed reusable-workflow certificate identity. There is no release artifact,
+image comparison, release attestation, release signing or deployment workflow
+here yet.
 Nothing in this repository currently authorizes a release or phone deployment.
 
 The initial [release policy](POLICY.md) is a review draft. The public `main`

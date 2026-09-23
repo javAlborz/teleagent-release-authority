@@ -5,6 +5,7 @@ import ctypes
 import json
 import os
 from pathlib import Path
+import re
 import resource
 import stat
 import subprocess
@@ -43,6 +44,19 @@ def fixed(argv, *, timeout=60):
 
 def detached(image):
     return fixed(['/usr/sbin/losetup', '-j', str(image)]).strip() == b''
+
+
+def detach_owned_loop(image):
+    listing = fixed(['/usr/sbin/losetup', '-j', str(image)]).decode('utf-8', 'replace').strip()
+    if not listing:
+        return
+    rows = listing.splitlines()
+    need(len(rows) == 1 and rows[0].endswith('(' + str(image) + ')'),
+         'owned loop lookup returned an unexpected backing image')
+    device = rows[0].split(':', 1)[0]
+    need(re.fullmatch(r'/dev/loop[0-9]{1,4}', device) is not None,
+         'owned loop lookup returned an unexpected device')
+    fixed(['/usr/sbin/losetup', '-d', device])
 
 
 def guard():
@@ -127,6 +141,7 @@ def main():
     finally:
         if mountpoint.stat().st_dev != original_device:
             fixed(['/usr/bin/umount', '--no-mtab', '--detach-loop', str(mountpoint)])
+        detach_owned_loop(image)
         need(mountpoint.stat().st_dev == original_device and detached(image),
              'owned quota mount or loop device remained attached')
         if image_fd is not None:

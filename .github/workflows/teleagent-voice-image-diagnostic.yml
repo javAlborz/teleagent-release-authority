@@ -127,6 +127,7 @@ jobs:
           set -euo pipefail
           export SOURCE_DATE_EPOCH=1790168683
           docker buildx build --platform linux/amd64 --no-cache --network none \
+            --build-arg SOURCE_DATE_EPOCH=1790168683 \
             --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
             --build-context app="$GITHUB_WORKSPACE/app" \
             --build-context dependencies="$RUNNER_TEMP/teleagent-musl-dependencies" \
@@ -149,3 +150,10 @@ jobs:
             teleagent-voice-diagnostic:20260923
           sha256sum "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
           echo 'Unsigned functional image diagnostic passed; no scan, release signing or installation was authorized.'
+      - name: Retain one-day unsigned image archive for independent comparison
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-voice-image-diagnostic
+          path: ${{ runner.temp }}/teleagent-voice-image-diagnostic.docker.tar
+          if-no-files-found: error
+          retention-days: 1

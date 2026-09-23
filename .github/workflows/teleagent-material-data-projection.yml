@@ -1,0 +1,109 @@
+name: Teleagent material data projection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  project:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: teleagent-private-source-read
+    steps:
+      - name: Require the exact hosted authority branch and admission space
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          python3 - <<'PY'
+          import os
+          geometry = os.statvfs(os.environ['RUNNER_TEMP'])
+          available = geometry.f_bavail * geometry.f_frsize
+          inodes = geometry.f_favail
+          assert available >= 30 * 1024 ** 3 and inodes >= 100000
+          print({'availableBytes': available, 'availableInodes': inodes,
+                 'teleagentBuildExecuted': False})
+          PY
+      - name: Read exact authority source
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          path: authority
+      - name: Read exact private infrastructure source
+        uses: actions/checkout@v5
+        with:
+          repository: javAlborz/homelab-infrastructure
+          ref: ac2124466cd442e4d66ae56e6648a27fdd52af16
+          ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
+          persist-credentials: false
+          path: infrastructure
+          sparse-checkout: |
+            scripts/ci
+            scripts/release
+      - name: Read exact public application source
+        uses: actions/checkout@v5
+        with:
+          repository: javAlborz/teleagent
+          ref: 6cbcc3aadab9053361487d1368c45e74d0a19789
+          persist-credentials: false
+          path: app
+      - name: Bind exact checked-out revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C infrastructure rev-parse HEAD)" = ac2124466cd442e4d66ae56e6648a27fdd52af16
+          test "$(git -C app rev-parse HEAD)" = 6cbcc3aadab9053361487d1368c45e74d0a19789
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git -C infrastructure status --porcelain)"
+          test -z "$(git -C app status --porcelain)"
+          test -z "$(git -C authority status --porcelain)"
+          printf '%s\n' \
+            'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0  infrastructure/scripts/release/teleagent-offline-materials.py' \
+            '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
+            | sha256sum --check --status
+      - name: Acquire only public inputs as data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-inputs"
+          python3 -I infrastructure/scripts/ci/acquire-teleagent-npm-materials.py \
+            --app-root "$GITHUB_WORKSPACE/app" --output "$RUNNER_TEMP/teleagent-inputs/npm"
+          python3 -I infrastructure/scripts/ci/acquire-teleagent-oci-materials.py \
+            --output "$RUNNER_TEMP/teleagent-inputs/oci"
+          python3 -I infrastructure/scripts/ci/acquire-teleagent-trivy-db.py \
+            --output "$RUNNER_TEMP/teleagent-inputs/trivy"
+          python3 -I authority/scripts/acquire-teleagent-fixed-inputs.py \
+            --inputs "$GITHUB_WORKSPACE/authority/inputs/teleagent" \
+            --output "$RUNNER_TEMP/teleagent-inputs/fixed"
+      - name: Require exact acquired manifest bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'a1590d9dd6aea4f2a8de00d2e3497a8d5319299154303280c55658e6c4ccc21f  '"$RUNNER_TEMP"'/teleagent-inputs/npm/manifest.json' \
+            'bcde585dc9f5ac35c932c60f28004cd269e124f5a1a09a73f3335b3a56091d8f  '"$RUNNER_TEMP"'/teleagent-inputs/oci/manifest.json' \
+            '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c  '"$RUNNER_TEMP"'/teleagent-inputs/trivy/manifest.json' \
+            | sha256sum --check --status
+      - name: Project and rehash exact material data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I infrastructure/scripts/release/teleagent-offline-materials.py \
+            --oci "$RUNNER_TEMP/teleagent-inputs/oci" \
+            --npm "$RUNNER_TEMP/teleagent-inputs/npm" \
+            --trivy "$RUNNER_TEMP/teleagent-inputs/trivy" \
+            --tools "$RUNNER_TEMP/teleagent-inputs/fixed/tools" \
+            --indexes "$RUNNER_TEMP/teleagent-inputs/fixed/indexes" \
+            --apk "$RUNNER_TEMP/teleagent-inputs/fixed/apk" \
+            --providers "$RUNNER_TEMP/teleagent-inputs/fixed/providers" \
+            --app-source "$GITHUB_WORKSPACE/app" \
+            --candidate-trivy-manifest-sha256 0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c \
+            --output "$RUNNER_TEMP/teleagent-materials"
+          python3 -I authority/scripts/verify-teleagent-data-projection.py \
+            --infra "$GITHUB_WORKSPACE/infrastructure" \
+            --materials "$RUNNER_TEMP/teleagent-materials"
+          echo 'Data-only projection passed; no acquired executable, build, scanner or signer ran.'

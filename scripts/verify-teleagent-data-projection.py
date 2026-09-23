@@ -1,0 +1,44 @@
+#!/usr/bin/python3 -I
+"""Recheck an exact unsigned Teleagent material projection as data only."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import runpy
+
+PLAN_SHA256 = '1bee8f8df904286a1dcddcc23471fa10cfb96b662b4af68feb866cfc18114cd5'
+SCHEMA = 'teleagent.offline-material-projection.v1'
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--infra', type=Path, required=True)
+    parser.add_argument('--materials', type=Path, required=True)
+    args = parser.parse_args()
+    source = args.infra / 'scripts/release'
+    preflight = runpy.run_path(str(source / 'teleagent-offline-supervisor-preflight.py'))
+    freshness = runpy.run_path(str(source / 'teleagent-offline-trivy-freshness.py'))
+    root_fd = os.open(args.materials, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        result = preflight['verify_projection'](
+            root_fd, plan_name='material-plan.json', schema=SCHEMA,
+            expected_plan_sha256=PLAN_SHA256)
+        plan_fd = os.open('material-plan.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                          dir_fd=root_fd)
+        try:
+            plan_bytes = os.read(plan_fd, preflight['MAX_PLAN'] + 1)
+            if os.read(plan_fd, 1) or hashlib.sha256(plan_bytes).hexdigest() != PLAN_SHA256:
+                raise ValueError('material plan changed after read-time preflight')
+        finally:
+            os.close(plan_fd)
+        _plan, rows, _size = preflight['parse_plan'](plan_bytes, SCHEMA)
+        current = freshness['check_projected'](root_fd, rows)
+        print(json.dumps({'projection': result, 'trivyFreshness': current,
+                          'signatureVerified': False, 'buildExecuted': False}, sort_keys=True))
+    finally:
+        os.close(root_fd)
+
+
+if __name__ == '__main__':
+    main()

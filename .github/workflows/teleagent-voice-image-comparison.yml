@@ -65,6 +65,7 @@ jobs:
           set -euo pipefail
           python3 -I - "$RUNNER_TEMP/35929953780/teleagent-voice-image-diagnostic.docker.tar" <<'PY'
           import json
+          import re
           import sys
           import tarfile
 
@@ -77,7 +78,7 @@ jobs:
               assert row['RepoTags'] == ['teleagent-voice-diagnostic:20260923']
               assert len(row['Layers']) >= 1
               config_name = row['Config']
-              assert config_name.endswith('.json') and '/' not in config_name
+              assert re.fullmatch(r'blobs/sha256/[0-9a-f]{64}', config_name)
               config_member = archive.getmember(config_name)
               assert config_member.isfile() and config_member.size < 1048576
               config = json.load(archive.extractfile(config_member))

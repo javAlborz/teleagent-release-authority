@@ -51,7 +51,7 @@ verifier must compare them to current authenticated metadata and bind an exact
 ## Current refusal state
 
 No release build, comparison, signing or deployment workflow or trusted signing
-root is selected or installed here. The manual unsigned glibc diagnostic is
+root is selected or installed here. The branch-only unsigned glibc diagnostic is
 ephemeral and does not produce an admitted release artifact. The sole Actions
 environment secret is the
 temporary private-infrastructure read key described above; there are no

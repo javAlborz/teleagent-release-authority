@@ -1,7 +1,7 @@
 # Teleagent release authority
 
 This public repository is the selected home for independent Teleagent release
-verification and signing. **It is not operational.** A branch-only manual
+verification and signing. **It is not operational.** A branch-only
 diagnostic can attempt one unsigned glibc dependency build in a disposable
 hosted volume. It discards its output. There is no release build, comparison,
 attestation, signing, or deployment workflow here yet. Nothing in this

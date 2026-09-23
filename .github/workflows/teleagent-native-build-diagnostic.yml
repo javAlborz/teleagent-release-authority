@@ -1,6 +1,11 @@
 name: Teleagent unsigned native build diagnostic
 
 on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-native-build-diagnostic.yml
   workflow_dispatch:
 
 permissions:

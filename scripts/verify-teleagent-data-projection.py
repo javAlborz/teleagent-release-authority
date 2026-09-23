@@ -9,12 +9,15 @@ import runpy
 
 PLAN_SHA256 = '1bee8f8df904286a1dcddcc23471fa10cfb96b662b4af68feb866cfc18114cd5'
 SCHEMA = 'teleagent.offline-material-projection.v1'
+ENGINE_PLAN_SHA256 = '5c2dfee0e305d5a84a7debb142b7ddbae3b4dc855a89126622449ebbd2c6e993'
+ENGINE_SCHEMA = 'teleagent.offline-engine-projection.v1'
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--infra', type=Path, required=True)
     parser.add_argument('--materials', type=Path, required=True)
+    parser.add_argument('--engines', type=Path, required=True)
     args = parser.parse_args()
     source = args.infra / 'scripts/release'
     preflight = runpy.run_path(str(source / 'teleagent-offline-supervisor-preflight.py'))
@@ -34,8 +37,16 @@ def main():
             os.close(plan_fd)
         _plan, rows, _size = preflight['parse_plan'](plan_bytes, SCHEMA)
         current = freshness['check_projected'](root_fd, rows)
-        print(json.dumps({'projection': result, 'trivyFreshness': current,
-                          'signatureVerified': False, 'buildExecuted': False}, sort_keys=True))
+        engine_fd = os.open(args.engines, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            engine = preflight['verify_projection'](
+                engine_fd, plan_name='engine-plan.json', schema=ENGINE_SCHEMA,
+                expected_plan_sha256=ENGINE_PLAN_SHA256)
+        finally:
+            os.close(engine_fd)
+        print(json.dumps({'materialProjection': result, 'engineProjection': engine,
+                          'trivyFreshness': current, 'signatureVerified': False,
+                          'buildExecuted': False}, sort_keys=True))
     finally:
         os.close(root_fd)
 

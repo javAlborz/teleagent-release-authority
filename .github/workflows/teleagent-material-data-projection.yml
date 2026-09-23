@@ -119,7 +119,11 @@ jobs:
             --app-source "$GITHUB_WORKSPACE/app" \
             --candidate-trivy-manifest-sha256 0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c \
             --output "$RUNNER_TEMP/teleagent-materials"
+          python3 -I infrastructure/scripts/release/teleagent-offline-engine-materials.py \
+            --input "$RUNNER_TEMP/teleagent-inputs/fixed/engine" \
+            --output "$RUNNER_TEMP/teleagent-engines"
           python3 -I authority/scripts/verify-teleagent-data-projection.py \
             --infra "$GITHUB_WORKSPACE/infrastructure" \
-            --materials "$RUNNER_TEMP/teleagent-materials"
+            --materials "$RUNNER_TEMP/teleagent-materials" \
+            --engines "$RUNNER_TEMP/teleagent-engines"
           echo 'Data-only projection passed; no acquired executable, build, scanner or signer ran.'

@@ -14,6 +14,7 @@ import urllib.request
 
 PINS = {
     'tools': '54f917a136554099a3872abbdd2965483babec33f71d45f4cbb0eaa8f30badb8',
+    'engine': 'fa6ca7d6da2b13855fe1d0ddeed6b6b36b756e7c917f78c59c2384a1b5e77ab5',
     'indexes': '1194d3519645cc83f07d791dbc23aa7dcfa750a5f2eea06b8ee5378bafe7f620',
     'apk': 'dcd6c02ebbf9d26efc9f7bce8c58c9a2ad9dfb6d06da36689cebfe56e276338d',
 }
@@ -146,13 +147,23 @@ def acquire(inputs, output):
     records = {name: manifest(inputs, name) for name in PINS}
     need(shutil.disk_usage(output.parent).free >= 3 * MAX_TOTAL,
          'insufficient acquisition storage')
-    rows = {'tools': [], 'indexes': [], 'apk': [], 'providers': []}
+    rows = {'tools': [], 'engine': [], 'indexes': [], 'apk': [], 'providers': []}
     tools = records['tools'][1]
     need([row['name'] for row in tools['tools']] == ['node', 'syft', 'trivy'],
          'tool inventory differs')
     for row in tools['tools']:
         rows['tools'].append((filename(row['archiveSha256']), *descriptor(
             row['url'], row['archiveSha256'], row['archiveBytes'])))
+    engine = records['engine'][1]
+    need(engine['schema'] == 'teleagent.buildkit-materials.v1' and
+         engine['version'] == 'v0.33.0' and len(engine['assets']) == 4 and
+         {row['name'] for row in engine['assets']} == {
+             'buildkit-v0.33.0.linux-amd64.' + suffix for suffix in
+             ('tar.gz', 'provenance.json', 'sbom.json', 'sigstore.json')},
+         'engine asset inventory differs')
+    for row in engine['assets']:
+        rows['engine'].append((filename(row['sha256']), *descriptor(
+            row['url'], row['sha256'], row['bytes'])))
     indexes = records['indexes'][1]
     need({row['repository'] for row in indexes['repositories']} == {'main', 'community'} and
          len(indexes['repositories']) == 2, 'index inventory differs')

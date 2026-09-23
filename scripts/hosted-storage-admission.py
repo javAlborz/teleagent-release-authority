@@ -2,6 +2,7 @@
 """Measure one disposable, bounded release-build filesystem on a hosted VM."""
 
 import ctypes
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -74,7 +75,9 @@ def guard():
          'exact hosted storage environment required')
 
 
-def main():
+@contextmanager
+def admitted_storage():
+    """Yield the exact bounded filesystem; drain users before leaving the scope."""
     guard()
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     initial = space('/tmp')
@@ -138,6 +141,13 @@ def main():
                   'minimumBuildAvailableBytes': MIN_BUILD_AVAILABLE,
                   'minimumHostReserveBytes': MIN_HOST_RESERVE,
                   'buildPeakMeasured': False, 'teleagentBuildExecuted': False}
+        yield mountpoint, result
+        result['afterWorkloadQuota'] = space(mountpoint)
+        result['afterWorkloadHost'] = space('/tmp')
+        need(result['afterWorkloadHost']['availableBytes'] >= MIN_HOST_RESERVE and
+             os.fstat(image_fd).st_blocks * 512 >= IMAGE_BYTES and
+             mountpoint.stat().st_dev != original_device,
+             'post-workload quota backing or host reserve differs')
     finally:
         if mountpoint.stat().st_dev != original_device:
             fixed(['/usr/bin/umount', '--no-mtab', '--detach-loop', str(mountpoint)])
@@ -157,6 +167,11 @@ def main():
         root.rmdir()
         need(not root.exists(), 'owned storage directory remained after cleanup')
     result['cleanupVerified'] = True
+
+
+def main():
+    with admitted_storage() as (_, result):
+        pass
     print(json.dumps(result, sort_keys=True))
 
 

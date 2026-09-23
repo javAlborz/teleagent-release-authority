@@ -1,0 +1,54 @@
+name: Hosted capacity observation
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/hosted-capacity-observation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  observe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Observe fresh public runner filesystems without a checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          targets = {'root': Path('/'), 'tmp': Path('/tmp'),
+                     'runnerTemp': Path(os.environ['RUNNER_TEMP']),
+                     'workspace': Path(os.environ['GITHUB_WORKSPACE'])}
+          if Path('/mnt').is_dir():
+              targets['mnt'] = Path('/mnt')
+          result = {}
+          for label, path in targets.items():
+              info = os.statvfs(path)
+              result[label] = {
+                  'availableBytes': info.f_bavail * info.f_frsize,
+                  'availableInodes': info.f_favail,
+                  'filesystemId': os.stat(path).st_dev,
+              }
+          result['buildAdmission'] = {
+              'initialMinimumBytes': 30 * 1024 ** 3,
+              'postBuildMinimumBytes': 15 * 1024 ** 3,
+              'eligibleTargetsNow': sorted(label for label, info in result.items()
+                                           if label != 'buildAdmission' and
+                                           info['availableBytes'] >= 30 * 1024 ** 3 and
+                                           info['availableInodes'] >= 100000),
+              'buildPeakMeasured': False,
+          }
+          print(json.dumps(result, sort_keys=True))
+          PY

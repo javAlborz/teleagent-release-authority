@@ -29,7 +29,7 @@ PROBE_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-host
 EXPORT_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-offline-export-inventory.py'
 EXPORT_SHA256 = '944f425f95adb5a3ddd8a7149f7a7c43b069cbf649cd172023ea8834d030daca'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
-PLAN_SHA256 = 'd4e035a78fa22011851a7e72fa108b8f94f3fdab835add9bc13626d43284ea8f'
+PLAN_SHA256 = 'e22dcf6673f42fb76352fb5dda37438c8e9e77eea4bb737cf95c7239f04dfa80'
 TARGETS = frozenset(('glibc', 'musl'))
 ENGINE = {
     'buildctl': (34512200, '0b45ae3696f836bf711dbd78138e403924d7733f0b2328ba29a7fcf9ad5f1dfd'),

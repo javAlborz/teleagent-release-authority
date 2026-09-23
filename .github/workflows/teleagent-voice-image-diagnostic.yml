@@ -6,6 +6,7 @@ on:
       - feat/hosted-capacity-probe-20260923
     paths:
       - .github/workflows/teleagent-voice-image-diagnostic.yml
+      - scripts/extract-verified-musl-dependencies.py
   workflow_dispatch:
 
 permissions:

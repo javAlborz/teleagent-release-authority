@@ -75,6 +75,10 @@ class ExtractTests(unittest.TestCase):
                          b'fixture dependency')
         self.assertEqual(stat.S_IMODE((output / 'voice-app/node_modules/tool').stat().st_mode),
                          0o555)
+        self.assertEqual(stat.S_IMODE((output / 'voice-app/node_modules').stat().st_mode),
+                         0o555)
+        self.assertEqual(stat.S_IMODE((output / 'voice-app/node_modules/data').stat().st_mode),
+                         0o444)
         self.assertFalse((output / 'build-receipt.json').exists())
         with self.assertRaisesRegex(ValueError, 'fresh absolute'):
             self.extract(output)

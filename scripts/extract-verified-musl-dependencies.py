@@ -93,7 +93,8 @@ def extract(tar_path, observation_path, destination):
                              'candidate tar parent is absent')
                         row = {'path': relative, 'type': 'directory' if member.isdir() else 'file',
                                'mode': f'{member.mode:04o}'}
-                        modes[relative] = member.mode & ~0o222
+                        modes[relative] = (0o555 if member.isdir() or member.mode & 0o111
+                                           else 0o444)
                         if member.isdir():
                             need(member.size == 0, 'candidate directory size differs')
                             output.mkdir(mode=0o700)

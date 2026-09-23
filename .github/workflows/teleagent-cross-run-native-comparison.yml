@@ -1,6 +1,11 @@
 name: Teleagent unsigned native cross-run comparison only
 
 on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-cross-run-native-comparison.yml
   workflow_dispatch:
 
 permissions:
@@ -10,6 +15,7 @@ permissions:
 jobs:
   compare:
     name: compare-exact-successful-native-job-artifacts-no-release
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

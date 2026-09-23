@@ -126,3 +126,10 @@ jobs:
           assert all(row[key] is False for key in ('buildExecuted','signatureVerified','trivyFreshnessAccepted'))
           print('Patched material projection is data-only; releaseApproved=false')
           PY
+      - name: Retain bounded one-day data-only plan for exact planner binding
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: patched-material-plan-data-only
+          path: ${{ runner.temp }}/teleagent-patched-materials/material-plan.json
+          if-no-files-found: error
+          retention-days: 1

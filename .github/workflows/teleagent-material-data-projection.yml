@@ -1,6 +1,14 @@
 name: Teleagent material data projection
 
 on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-material-data-projection.yml
+      - scripts/acquire-teleagent-fixed-inputs.py
+      - scripts/verify-teleagent-data-projection.py
+      - inputs/teleagent/**
   workflow_dispatch:
 
 permissions:

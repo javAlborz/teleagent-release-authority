@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 404520b046547fcb021680116cc69cfe9eaf3353
+          ref: 16358f4ed64fd6207edeb53be0f87846661b4d04
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -59,22 +59,22 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 6cbcc3aadab9053361487d1368c45e74d0a19789
+          ref: 4279253269c71acfda20916707d26b4e51591c16
           persist-credentials: false
           path: app
       - name: Bind exact checked-out revisions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C infrastructure rev-parse HEAD)" = 404520b046547fcb021680116cc69cfe9eaf3353
-          test "$(git -C app rev-parse HEAD)" = 6cbcc3aadab9053361487d1368c45e74d0a19789
+          test "$(git -C infrastructure rev-parse HEAD)" = 16358f4ed64fd6207edeb53be0f87846661b4d04
+          test "$(git -C app rev-parse HEAD)" = 4279253269c71acfda20916707d26b4e51591c16
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git -C infrastructure status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           test -z "$(git -C authority status --porcelain)"
           printf '%s\n' \
-            'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0  infrastructure/scripts/release/teleagent-offline-materials.py' \
-            '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
+            '9caec3e0fee3c9fa44782dddeaa56f3e306aa22e6a36f0b94c218a4b9c7aed4f  infrastructure/scripts/release/teleagent-offline-materials.py' \
+            '4242e5372337e33600f35386943e17197901f1e2c7fade9272f91fd74baf5707  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
             | sha256sum --check --status
       - name: Acquire only public inputs as data
         shell: bash
@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' \
-            'a1590d9dd6aea4f2a8de00d2e3497a8d5319299154303280c55658e6c4ccc21f  '"$RUNNER_TEMP"'/teleagent-inputs/npm/manifest.json' \
+            'cf92ba749d9405d7d29e547319b6af5ea26ecf9611cde0ca5e878e1eb23331f3  '"$RUNNER_TEMP"'/teleagent-inputs/npm/manifest.json' \
             'bcde585dc9f5ac35c932c60f28004cd269e124f5a1a09a73f3335b3a56091d8f  '"$RUNNER_TEMP"'/teleagent-inputs/oci/manifest.json' \
             '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c  '"$RUNNER_TEMP"'/teleagent-inputs/trivy/manifest.json' \
             | sha256sum --check --status

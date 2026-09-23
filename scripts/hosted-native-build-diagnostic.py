@@ -26,7 +26,7 @@ import uuid
 HERE = Path(__file__).resolve().parent
 PROBE_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-hosted-runc-probe.py'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
-PLAN_SHA256 = '419ee7114e606f716f4be330fe383bba420f9ac92c9a356f12a34c7bd8b8ae09'
+PLAN_SHA256 = 'c641f38721e1f38be2829262e713ecb61e62b3e79aec90917e75ba42968961d3'
 ENGINE = {
     'buildctl': (34512200, '0b45ae3696f836bf711dbd78138e403924d7733f0b2328ba29a7fcf9ad5f1dfd'),
     'buildkitd': (80466872, '157da954fa081d9ec4f063d62029fbbf12437c1d47ab63080594eae5a85b36f2'),

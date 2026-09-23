@@ -78,11 +78,29 @@ jobs:
           assert type(certificate) is dict
           timestamps = result['verifiedTimestamps']
           assert type(timestamps) is list and len(timestamps) >= 1
+          expected_identity = {
+              'subjectAlternativeName': 'https://github.com/docker/github-builder/.github/workflows/bake.yml@58cb9f5b71b1836d6f690c1e95effdeb9b98cb8a',
+              'githubWorkflowTrigger': 'push',
+              'githubWorkflowSHA': 'dddd5621af04ea57823085c93a063383f71d3173',
+              'githubWorkflowName': 'buildkit',
+              'githubWorkflowRepository': 'moby/buildkit',
+              'githubWorkflowRef': 'refs/tags/v0.33.0',
+              'runnerEnvironment': 'github-hosted',
+              'sourceRepositoryURI': 'https://github.com/moby/buildkit',
+              'sourceRepositoryDigest': 'dddd5621af04ea57823085c93a063383f71d3173',
+              'sourceRepositoryRef': 'refs/tags/v0.33.0',
+              'sourceRepositoryIdentifier': '92969352',
+              'sourceRepositoryOwnerURI': 'https://github.com/moby',
+              'sourceRepositoryOwnerIdentifier': '27259197',
+              'sourceRepositoryVisibilityAtSigning': 'public',
+          }
+          for key, value in expected_identity.items():
+              assert certificate.get(key) == value, key
           identity = {key: value for key, value in certificate.items()
                       if any(word in key.lower() for word in ('source', 'workflow', 'runner', 'subject'))
                       and type(value) is str and len(value) <= 500}
           print({'schema': 'teleagent.buildkit-provenance-diagnostic.v1',
                  'archiveSubjectVerified': True, 'certificateIdentityFields': identity,
                  'verifiedTimestampCount': len(timestamps),
-                 'signerPolicyAccepted': False, 'releaseApproved': False})
+                 'upstreamBuildKitSignerVerified': True, 'releaseApproved': False})
           PY

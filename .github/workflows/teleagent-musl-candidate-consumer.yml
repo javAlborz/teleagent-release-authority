@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
-      - name: Retrieve only the prior exact unsigned musl data
+      - name: Retrieve only the patched exact unsigned musl data
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,10 +40,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git status --porcelain)"
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-musl-inputs"
-          gh run download 35925176855 --repo javAlborz/teleagent-release-authority \
+          gh run download 35932701529 --repo javAlborz/teleagent-release-authority \
             --name unsigned-native-candidate-musl-1 \
             --dir "$RUNNER_TEMP/teleagent-musl-inputs"
-          gh run download 35925176855 --repo javAlborz/teleagent-release-authority \
+          gh run download 35932701529 --repo javAlborz/teleagent-release-authority \
             --name unsigned-observation-musl-1 \
             --dir "$RUNNER_TEMP/teleagent-musl-inputs"
           python3 -I - "$RUNNER_TEMP/teleagent-musl-inputs" <<'PY'

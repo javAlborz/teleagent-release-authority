@@ -16,10 +16,10 @@ HERE = Path(__file__).resolve().parent
 checker = runpy.run_path(str(HERE / 'compare-retained-native-candidates.py'),
                          run_name='musl_candidate_checker')
 base = checker['base']
-PLAN_SHA = 'e22dcf6673f42fb76352fb5dda37438c8e9e77eea4bb737cf95c7239f04dfa80'
-SUBJECT_SHA = 'f58b8612ce8efd7f57eca5aec94fe90e8db7e574636ae293a275b541904b1fd0'
-TAR_SHA = '1af92157e49c235fec2f5f9eadeb8108c89a59bb2b09a1a978a55ac896812cdb'
-EPOCH = 1790168683
+PLAN_SHA = '877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904'
+SUBJECT_SHA = 'd5645fa7e268a92f5e9c2442d9c68f70a1ace456e44e81190047b028fe8ce7cb'
+TAR_SHA = '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f1636303655cfc925'
+EPOCH = 1790204008
 
 
 def need(condition, message):

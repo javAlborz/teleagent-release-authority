@@ -40,12 +40,12 @@ jobs:
                  'teleagentBuildExecuted': False})
           PY
       - name: Read exact authority source
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
           path: authority
       - name: Read exact private infrastructure source
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
           ref: 404520b046547fcb021680116cc69cfe9eaf3353
@@ -56,7 +56,7 @@ jobs:
             scripts/ci
             scripts/release
       - name: Read exact public application source
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
           ref: 6cbcc3aadab9053361487d1368c45e74d0a19789

@@ -1,0 +1,49 @@
+name: Private source read proof
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/private-source-read-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: teleagent-private-source-read
+    steps:
+      - name: Require the exact hosted authority branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read only the pinned private release source tree
+        uses: actions/checkout@v5
+        with:
+          repository: javAlborz/homelab-infrastructure
+          ref: ac2124466cd442e4d66ae56e6648a27fdd52af16
+          ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
+          persist-credentials: false
+          path: infrastructure
+          sparse-checkout: scripts/release
+      - name: Verify source identity without printing source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C infrastructure rev-parse HEAD)" = ac2124466cd442e4d66ae56e6648a27fdd52af16
+          test -z "$(git -C infrastructure status --porcelain)"
+          printf '%s\n' \
+            'f0635cd75525b85c8fe6a02e61fb950dfcea0189993565ae44aa0d8fdd20e955  infrastructure/scripts/release/teleagent-offline-build.py' \
+            '341efb1b7703de7c0a021e5c83c8259fc2a6b45d8529c933b90fa01e3b15da38  infrastructure/scripts/release/teleagent-offline-runc-protocol.py' \
+            'e360cfa888accca2744796295215d15bbd325b9740412cce37f26b890d52fd42  infrastructure/scripts/release/teleagent-offline-job-cgroup.py' \
+            'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0  infrastructure/scripts/release/teleagent-offline-materials.py' \
+            '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
+            | sha256sum --check --status
+          echo 'Pinned private source read and three exact file hashes verified; no source executed.'

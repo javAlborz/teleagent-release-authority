@@ -9,6 +9,8 @@ on:
       - scripts/acquire-teleagent-fixed-inputs.py
       - scripts/bind-teleagent-trivy-reference.py
       - scripts/verify-teleagent-data-projection.py
+      - scripts/project-teleagent-data-in-quota.py
+      - scripts/hosted-storage-admission.py
       - inputs/teleagent/**
   workflow_dispatch:
 
@@ -108,22 +110,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -I infrastructure/scripts/release/teleagent-offline-materials.py \
-            --oci "$RUNNER_TEMP/teleagent-inputs/oci" \
-            --npm "$RUNNER_TEMP/teleagent-inputs/npm" \
-            --trivy "$RUNNER_TEMP/teleagent-inputs/trivy" \
-            --tools "$RUNNER_TEMP/teleagent-inputs/fixed/tools" \
-            --indexes "$RUNNER_TEMP/teleagent-inputs/fixed/indexes" \
-            --apk "$RUNNER_TEMP/teleagent-inputs/fixed/apk" \
-            --providers "$RUNNER_TEMP/teleagent-inputs/fixed/providers" \
-            --app-source "$GITHUB_WORKSPACE/app" \
-            --candidate-trivy-manifest-sha256 0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c \
-            --output "$RUNNER_TEMP/teleagent-materials"
-          python3 -I infrastructure/scripts/release/teleagent-offline-engine-materials.py \
-            --input "$RUNNER_TEMP/teleagent-inputs/fixed/engine" \
-            --output "$RUNNER_TEMP/teleagent-engines"
-          python3 -I authority/scripts/verify-teleagent-data-projection.py \
-            --infra "$GITHUB_WORKSPACE/infrastructure" \
-            --materials "$RUNNER_TEMP/teleagent-materials" \
-            --engines "$RUNNER_TEMP/teleagent-engines"
-          echo 'Data-only projection passed; no acquired executable, build, scanner or signer ran.'
+          sudo env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+            GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted \
+            GITHUB_REPOSITORY=javAlborz/teleagent-release-authority \
+            GITHUB_REF=refs/heads/feat/hosted-capacity-probe-20260923 \
+            /usr/bin/python3 -I authority/scripts/project-teleagent-data-in-quota.py \
+            --workspace "$GITHUB_WORKSPACE" --runner-temp "$RUNNER_TEMP"
+          echo 'Bounded data-only projection passed; no acquired executable, build, scanner or signer ran.'

@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: c7f68a16c8139c7d9cff75d187aec6e4c555c985
+          ref: ccbede7c8f4cecf738d22a7f0784a7f216c71b1b
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C infrastructure rev-parse HEAD)" = c7f68a16c8139c7d9cff75d187aec6e4c555c985
+          test "$(git -C infrastructure rev-parse HEAD)" = ccbede7c8f4cecf738d22a7f0784a7f216c71b1b
           test "$(git -C app rev-parse HEAD)" = 4279253269c71acfda20916707d26b4e51591c16
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git -C infrastructure status --porcelain)"
@@ -87,7 +87,7 @@ jobs:
           test -z "$(git -C authority status --porcelain)"
           printf '%s\n' \
             '9caec3e0fee3c9fa44782dddeaa56f3e306aa22e6a36f0b94c218a4b9c7aed4f  infrastructure/scripts/release/teleagent-offline-materials.py' \
-            '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
+            '4242e5372337e33600f35386943e17197901f1e2c7fade9272f91fd74baf5707  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
             | sha256sum --check --status
       - name: Check bounded native observation and archive boundaries
         shell: bash
@@ -207,7 +207,7 @@ jobs:
           set -euo pipefail
           python3 -I authority/scripts/compare-native-diagnostic-observations.py \
             --root "$RUNNER_TEMP/teleagent-observations" \
-            --plan-sha256 e86de75ba541da73e69b792d1e3f58e5705cd3b1ef7c34834454ba18177d2593
+            --plan-sha256 877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904
       - name: Read four unsigned dependency tars
         if: inputs.retain_candidate == true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -223,4 +223,4 @@ jobs:
           python3 -I authority/scripts/compare-retained-native-candidates.py \
             --observations "$RUNNER_TEMP/teleagent-observations" \
             --tars "$RUNNER_TEMP/teleagent-retained" \
-            --plan-sha256 e86de75ba541da73e69b792d1e3f58e5705cd3b1ef7c34834454ba18177d2593
+            --plan-sha256 877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904

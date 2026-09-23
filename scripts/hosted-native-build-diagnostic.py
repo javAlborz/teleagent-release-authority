@@ -31,7 +31,7 @@ EXPORT_SHA256 = '944f425f95adb5a3ddd8a7149f7a7c43b069cbf649cd172023ea8834d030dac
 RETAIN_PATH = HERE / 'retain-native-dependency-tar.py'
 RETAIN_SHA256 = '9e542eca4964f2eb866ab62162c8ab64213a16f8de6bafa74531bfa208af88bf'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
-PLAN_SHA256 = 'e86de75ba541da73e69b792d1e3f58e5705cd3b1ef7c34834454ba18177d2593'
+PLAN_SHA256 = '877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904'
 TARGETS = frozenset(('glibc', 'musl'))
 ENGINE = {
     'buildctl': (34512200, '0b45ae3696f836bf711dbd78138e403924d7733f0b2328ba29a7fcf9ad5f1dfd'),

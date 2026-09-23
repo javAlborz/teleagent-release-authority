@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import runpy
 import stat
 import subprocess
@@ -16,7 +17,7 @@ import subprocess
 MATERIAL_SOURCE_SHA256 = 'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0'
 ENGINE_SOURCE_SHA256 = '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857'
 PLANNER_SOURCE_SHA256 = '8630eaf86e1e2afbe401415b7724fccfafce80528f3d5c7fbfb669ddfa9671b4'
-SOURCE_PAIRS_SHA256 = '8ac1ec2f3599ededaa0e6aefea9d68a3629e3c9e89'
+SOURCE_PAIRS_SHA256 = '8ac1ec2f3599ededaa0e6aefea9d68a3629e3f047bcd514ffe89940d8e3c9e89'
 TRIVY_MANIFEST_SHA256 = '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c'
 MATERIAL_PLAN_SHA256 = '1bee8f8df904286a1dcddcc23471fa10cfb96b662b4af68feb866cfc18114cd5'
 ENGINE_PLAN_SHA256 = '5c2dfee0e305d5a84a7debb142b7ddbae3b4dc855a89126622449ebbd2c6e993'
@@ -59,6 +60,53 @@ def fixed(argv, *, uid, gid, maximum=16384):
          ' exit=' + str(result.returncode) +
          ' stderr=' + result.stderr.decode('utf-8', 'replace')[-2048:])
     return result.stdout
+
+
+def stage_small_tree(source, destination, rows):
+    """Copy an exact small source closure into immutable data modes."""
+    need(type(rows) is list and 0 < len(rows) <= 16,
+         'small source closure count differs')
+    destination.mkdir(mode=0o700)
+    folders = {destination}
+    names = set()
+    for row in rows:
+        name, expected = row['path'], row['sha256']
+        need(type(name) is str and re.fullmatch(r'[A-Za-z0-9_./+-]{1,2048}', name) and
+             all(part not in ('', '.', '..') for part in name.split('/')) and
+             name not in names and type(expected) is str and
+             re.fullmatch('[a-f0-9]{64}', expected),
+             'small source closure path or hash differs')
+        names.add(name)
+        original = source / name
+        same_file(original, expected)
+        target = destination / name
+        target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        folders.add(target.parent)
+        source_fd = os.open(original, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        target_fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL |
+                            os.O_NOFOLLOW | os.O_CLOEXEC, 0o400)
+        try:
+            while True:
+                chunk = os.read(source_fd, 1024 * 1024)
+                if not chunk:
+                    break
+                offset = 0
+                while offset < len(chunk):
+                    amount = os.write(target_fd, chunk[offset:])
+                    need(amount > 0, 'small source projection short write')
+                    offset += amount
+            os.fsync(target_fd)
+            os.fchmod(target_fd, 0o444)
+            os.utime(target_fd, ns=(0, 0))
+        finally:
+            os.close(target_fd)
+            os.close(source_fd)
+        same_file(original, expected)
+        same_file(target, expected)
+    for folder in sorted(folders, key=lambda item: len(item.parts), reverse=True):
+        folder.chmod(0o555)
+        os.utime(folder, ns=(0, 0))
+    return len(names)
 
 
 @contextmanager
@@ -174,6 +222,19 @@ def main():
                          ('executable', 'runtimeAccepted', 'buildExecuted',
                           'signatureVerified', 'promotionAuthorized')),
                      'unsigned offline plan authority or bindings differ')
+                app_projection = mounted / 'teleagent-app-source'
+                payload_projection = mounted / 'teleagent-payload-source'
+                app_count = stage_small_tree(app, app_projection, pairs)
+                payload_count = stage_small_tree(
+                    release, payload_projection, plan['payloadSourceClosure'])
+                with sealed_alias(app_projection, mounted / 'sealed-app-source') as sealed_app:
+                    with sealed_alias(payload_projection, mounted / 'sealed-payload-source') as sealed_payload:
+                        for row in pairs:
+                            same_file(sealed_app / row['path'], row['sha256'])
+                        for row in plan['payloadSourceClosure']:
+                            same_file(sealed_payload / row['path'], row['sha256'])
+                need(app_count == 12 and payload_count == 3,
+                     'small source closure projection count differs')
         need(verified['materialProjection']['dataOnly'] is True and
              verified['engineProjection']['dataOnly'] is True and
              verified['buildExecuted'] is False and verified['signatureVerified'] is False,
@@ -185,6 +246,8 @@ def main():
         result['sourceEpoch'] = SOURCE_EPOCH
         result['trivyFreshnessAcceptedForBuild'] = False
         result['privateInputReadOnlyAliasesVerified'] = True
+        result['appSourcePairFilesProjected'] = app_count
+        result['payloadSourceFilesProjected'] = payload_count
         result['teleagentBuildExecuted'] = False
         mounted.parent.chmod(0o700)
     need(result['cleanupVerified'] is True and result['afterWorkloadQuota']['availableBytes'] >=

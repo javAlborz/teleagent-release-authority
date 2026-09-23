@@ -8,6 +8,7 @@ projected runc handoff have been established.
 """
 
 import ctypes
+import base64
 import hashlib
 import json
 import os
@@ -87,6 +88,38 @@ def tail(path, maximum=2048):
         return os.read(fd, maximum).decode('utf-8', 'replace')
     finally:
         os.close(fd)
+
+
+def payload_refusal(path):
+    info = path.stat()
+    need(stat.S_ISREG(info.st_mode) and 0 < info.st_size <= 8 * 1024 * 1024,
+         'native raw build trace exceeds diagnostic bound')
+    messages = []
+    with path.open('rb') as stream:
+        for line in stream:
+            need(len(line) <= 1024 * 1024,
+                 'native raw build trace line exceeds bound')
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if type(record) is not dict or type(record.get('logs')) is not list:
+                continue
+            for entry in record['logs'][:16]:
+                if type(entry) is not dict or type(entry.get('data')) is not str:
+                    continue
+                encoded = entry['data']
+                if len(encoded) > 4096:
+                    continue
+                try:
+                    decoded = base64.b64decode(encoded, validate=True)
+                except ValueError:
+                    continue
+                if decoded.startswith(b'offline build refused:') and len(decoded) <= 512:
+                    message = decoded.decode('ascii', 'replace').strip()
+                    if all(32 <= ord(char) <= 126 for char in message):
+                        messages.append(message)
+    return messages[-1] if messages else '<no bounded payload refusal line>'
 
 
 def mounted_exec(path):
@@ -233,6 +266,7 @@ def run_target(root, plan, probe):
                             except Exception as error:
                                 raise RuntimeError(
                                     'native ' + phase + ' adapter refused: ' + str(error) +
+                                    '; payload refusal=' + payload_refusal(build_log) +
                                     '; buildctl tail=' + tail(build_log) +
                                     '; daemon tail=' + tail(log) +
                                     '; runc tail=' + tail(Path(

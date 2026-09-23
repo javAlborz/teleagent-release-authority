@@ -16,7 +16,12 @@ on:
   workflow_dispatch:
     inputs:
       retain_candidate:
-        description: Retain unsigned dependency tars for same-run comparison
+        description: Retain unsigned dependency tars for independent comparison
+        type: boolean
+        required: true
+        default: false
+      pair_only:
+        description: Retry one replica per libc target without same-run comparison
         type: boolean
         required: true
         default: false
@@ -34,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         target: [glibc, musl]
-        replica: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["1","2"]' || '["1"]') }}
+        replica: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.pair_only == true && '["retry"]' || github.event_name == 'workflow_dispatch' && '["1","2"]' || '["1"]') }}
     steps:
       - name: Require the exact hosted authority branch and admission space
         shell: bash
@@ -172,7 +177,7 @@ jobs:
 
   compare:
     name: compare-unsigned-native-observations
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.pair_only != true
     needs: project
     runs-on: ubuntu-24.04
     timeout-minutes: 10

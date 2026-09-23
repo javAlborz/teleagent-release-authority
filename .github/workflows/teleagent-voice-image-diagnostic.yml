@@ -126,7 +126,11 @@ jobs:
         run: |
           set -euo pipefail
           export SOURCE_DATE_EPOCH=1790168683
-          docker buildx build --platform linux/amd64 --no-cache --network none \
+          docker buildx create --name teleagent-voice-diag --driver docker-container \
+            --driver-opt image=moby/buildkit@sha256:a461e7f0ce921972028acfbed628d45663d83e67ac1230722c2b34cf72760a0d \
+            --bootstrap
+          docker buildx build --builder teleagent-voice-diag \
+            --platform linux/amd64 --no-cache --network none \
             --build-arg SOURCE_DATE_EPOCH=1790168683 \
             --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
             --build-context app="$GITHUB_WORKSPACE/app" \
@@ -149,6 +153,7 @@ jobs:
             --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \
             -e 'const DB=require("better-sqlite3");const db=new DB(":memory:");db.exec("create table smoke(n integer)");db.close();console.log("VOICE_NATIVE_SMOKE_OK")'
           sha256sum "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
+          docker buildx rm teleagent-voice-diag
           echo 'Unsigned functional image diagnostic passed; no scan, release signing or installation was authorized.'
       - name: Retain one-day unsigned image archive for independent comparison
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

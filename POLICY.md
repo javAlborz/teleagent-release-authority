@@ -50,9 +50,11 @@ verifier must compare them to current authenticated metadata and bind an exact
 
 ## Current refusal state
 
-No release build, comparison, signing or deployment workflow or trusted signing
-root is selected or installed here. The branch-only unsigned libc diagnostics are
-ephemeral and does not produce an admitted release artifact. The sole Actions
+No release build, release-artifact comparison, signing or deployment workflow or
+trusted signing root is selected or installed here. The branch-only unsigned
+libc diagnostic compares two fresh dependency observations per target when
+manually dispatched. It discards compiled outputs and does not produce an
+admitted release artifact. The sole Actions
 environment secret is the
 temporary private-infrastructure read key described above; there are no
 signing keys, OIDC grants, release artifacts or promotion dispatches. The

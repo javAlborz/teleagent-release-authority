@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 3dde42d79833bb7e86ebb7970ec51f4c99cc3b86
+          ref: 404520b046547fcb021680116cc69cfe9eaf3353
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C infrastructure rev-parse HEAD)" = 3dde42d79833bb7e86ebb7970ec51f4c99cc3b86
+          test "$(git -C infrastructure rev-parse HEAD)" = 404520b046547fcb021680116cc69cfe9eaf3353
           test "$(git -C app rev-parse HEAD)" = 6cbcc3aadab9053361487d1368c45e74d0a19789
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git -C infrastructure status --porcelain)"
@@ -86,7 +86,8 @@ jobs:
           python3 -I infrastructure/scripts/ci/acquire-teleagent-oci-materials.py \
             --output "$RUNNER_TEMP/teleagent-inputs/oci"
           python3 -I infrastructure/scripts/ci/acquire-teleagent-trivy-db.py \
-            --output "$RUNNER_TEMP/teleagent-inputs/trivy"
+            --output "$RUNNER_TEMP/teleagent-inputs/trivy" \
+            --manifest-digest sha256:59c3d4df5f33836eb5dc3b817478f35b546f79ed250b47ebf10d3dc94f1de75e
           python3 -I authority/scripts/acquire-teleagent-fixed-inputs.py \
             --inputs "$GITHUB_WORKSPACE/authority/inputs/teleagent" \
             --output "$RUNNER_TEMP/teleagent-inputs/fixed"

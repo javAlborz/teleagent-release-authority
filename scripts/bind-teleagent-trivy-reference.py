@@ -1,5 +1,5 @@
 #!/usr/bin/python3 -I
-"""Bind a fresh identical Trivy download to the fixed acquisition reference.
+"""Bind a fresh exact-digest Trivy download to the fixed acquisition reference.
 
 The acquisition's actual time-bearing manifest is retained separately. The
 projector uses the fixed reference so two independent jobs have identical
@@ -31,6 +31,18 @@ def read(path):
     return data, json.loads(data, object_pairs_hook=unique)
 
 
+def same_selected_objects(reference, generated):
+    if (type(reference) is not dict or type(generated) is not dict or
+            set(generated) != set(reference) | {'requestedDigest'} or
+            generated.get('requestedDigest') != reference.get('manifestDigest') or
+            generated.get('resolvedTag') is not None or
+            any(reference[key] != generated[key] for key in reference
+                if key not in ('acquiredAt', 'resolvedTag')) or
+            type(generated.get('acquiredAt')) is not str or
+            not generated['acquiredAt']):
+        raise ValueError('exact-digest Trivy acquisition differs from pinned object set')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--acquired', type=Path, required=True)
@@ -41,11 +53,7 @@ def main():
         raise ValueError('Trivy reference digest differs')
     manifest = args.acquired / 'manifest.json'
     generated_bytes, generated = read(manifest)
-    if (set(reference) != set(generated) or
-            any(reference[key] != generated[key] for key in reference if key != 'acquiredAt')):
-        raise ValueError('fresh Trivy acquisition differs from pinned object set')
-    if type(generated['acquiredAt']) is not str or not generated['acquiredAt']:
-        raise ValueError('fresh Trivy acquisition timestamp absent')
+    same_selected_objects(reference, generated)
     actual = args.acquired / 'manifest.generated.json'
     if actual.exists():
         raise ValueError('fresh Trivy acquisition already bound')

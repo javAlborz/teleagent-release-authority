@@ -9,6 +9,8 @@ on:
       - scripts/hosted-native-build-diagnostic.py
       - scripts/project-teleagent-data-in-quota.py
       - scripts/compare-native-diagnostic-observations.py
+      - scripts/retain-native-dependency-tar.py
+      - scripts/test_retain_native_dependency_tar.py
   workflow_dispatch:
 
 permissions:
@@ -79,6 +81,14 @@ jobs:
             'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0  infrastructure/scripts/release/teleagent-offline-materials.py' \
             '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
             | sha256sum --check --status
+      - name: Check source-only deterministic dependency archive boundary
+        shell: bash
+        env:
+          TELEAGENT_TEST_EXPORT_SOURCE: ${{ github.workspace }}/infrastructure/scripts/release/teleagent-offline-export-inventory.py
+        run: |
+          set -euo pipefail
+          python3 -I -B -m unittest discover -s authority/scripts \
+            -p test_retain_native_dependency_tar.py -v
       - name: Acquire only public inputs as data
         shell: bash
         run: |

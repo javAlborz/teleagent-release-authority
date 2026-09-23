@@ -28,6 +28,8 @@ HERE = Path(__file__).resolve().parent
 PROBE_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-hosted-runc-probe.py'
 EXPORT_PATH = HERE.parent.parent / 'infrastructure/scripts/release/teleagent-offline-export-inventory.py'
 EXPORT_SHA256 = '944f425f95adb5a3ddd8a7149f7a7c43b069cbf649cd172023ea8834d030daca'
+RETAIN_PATH = HERE / 'retain-native-dependency-tar.py'
+RETAIN_SHA256 = '9e542eca4964f2eb866ab62162c8ab64213a16f8de6bafa74531bfa208af88bf'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
 PLAN_SHA256 = 'e22dcf6673f42fb76352fb5dda37438c8e9e77eea4bb737cf95c7239f04dfa80'
 TARGETS = frozenset(('glibc', 'musl'))
@@ -365,7 +367,8 @@ def inside(mounted, target):
     print(json.dumps(result, sort_keys=True))
 
 
-def projected(*, mounted, materials, engines, app, payload, plan, target):
+def projected(*, mounted, materials, engines, app, payload, plan, target,
+              retained_dir=None):
     need(target in TARGETS, 'native diagnostic target differs')
     need(plan['schema'] == 'teleagent.offline-build-plan.v1' and
          plan['sourceEpoch'] == 1790168683 and
@@ -384,11 +387,33 @@ def projected(*, mounted, materials, engines, app, payload, plan, target):
     result = fixed(['/usr/bin/unshare', '--mount', '--net', '--pid', '--fork',
                     '--mount-proc', '/usr/bin/python3', '-I', str(Path(__file__).resolve()),
                     '--inside', str(mounted), target], timeout=3700, maximum=65536)
-    return json.loads(result)
+    observed = json.loads(result)
+    if retained_dir is not None:
+        need(type(observed) is dict and observed.get('target') == target and
+             type(observed.get('dependencySubjectSha256')) is str and
+             re.fullmatch(r'[a-f0-9]{64}', observed['dependencySubjectSha256']) and
+             not retained_dir.exists(), 'retained native candidate preflight differs')
+        need(hashlib.sha256(RETAIN_PATH.read_bytes()).hexdigest() == RETAIN_SHA256,
+             'retained native candidate source differs')
+        retained_dir.mkdir(mode=0o700)
+        archive = runpy.run_path(str(RETAIN_PATH), run_name='native_retained_candidate')
+        tar_path = retained_dir / (target + '.tar')
+        retained = archive['retain'](mounted / 'native-outputs' / target,
+                                     target, EXPORT_PATH, tar_path,
+                                     observed['dependencySubjectSha256'],
+                                     plan['sourceEpoch'])
+        need(retained['dependencyBytes'] == observed['dependencyBytes'] and
+             retained['dependencyEntries'] == observed['dependencyEntries'] and
+             retained['signatureVerified'] is False and
+             retained['releaseApproved'] is False,
+             'retained native candidate differs from initial export')
+        observed['retainedCandidate'] = retained
+    return observed
 
 
 def main():
-    need(len(sys.argv) in (4, 5) and sys.argv[1] in ('--hosted', '--inside'),
+    need(len(sys.argv) in (4, 5) and sys.argv[1] in
+         ('--hosted', '--hosted-retain', '--inside'),
          'native diagnostic arguments differ')
     expected = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8',
                 'LC_ALL': 'C.UTF-8', 'GITHUB_ACTIONS': 'true',
@@ -408,13 +433,26 @@ def main():
         need(len(sys.argv) == 5 and sys.argv[4] in TARGETS,
              'native diagnostic hosted arguments differ')
         module = runpy.run_path(str(PROJECT_PATH), run_name='native_diagnostic_projection')
+        retained_dir = (Path(sys.argv[3]) / 'teleagent-retained'
+                        if sys.argv[1] == '--hosted-retain' else None)
         result = module['project'](on_projected=lambda **kwargs: projected(
-                                       target=sys.argv[4], **kwargs),
+                                       target=sys.argv[4], retained_dir=retained_dir,
+                                       **kwargs),
                                    workspace=Path(sys.argv[2]),
                                    runner_temp=Path(sys.argv[3]))
         need(result['cleanupVerified'] is True and
              result['projectedCallbackResult']['unsignedNativeBuildDiagnostic'] is True,
              'native diagnostic cleanup or result differs')
+        if retained_dir is not None:
+            tar_path = retained_dir / (sys.argv[4] + '.tar')
+            need(tar_path.is_file() and tar_path.stat().st_size ==
+                 result['projectedCallbackResult']['retainedCandidate']['tarBytes'],
+                 'retained candidate disappeared after quota cleanup')
+            owner = Path(sys.argv[2]).stat()
+            need(0 < owner.st_uid <= 65535 and 0 < owner.st_gid <= 65535,
+                 'hosted retained candidate owner differs')
+            os.chown(tar_path, owner.st_uid, owner.st_gid)
+            os.chown(retained_dir, owner.st_uid, owner.st_gid)
         print(json.dumps(result, sort_keys=True))
 
 

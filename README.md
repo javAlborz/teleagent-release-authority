@@ -4,8 +4,11 @@ This public repository is the selected home for independent Teleagent release
 verification and signing. **Release authority is not operational.** A branch-only
 diagnostic builds unsigned glibc and musl dependencies in separate disposable
 hosted volumes. A manual run starts two fresh jobs per target and compares their
-bounded dependency observations after owned cleanup. It retains only those JSON
-observations for one day and discards the compiled outputs. There is no release
+bounded dependency observations after owned cleanup. The default retains only
+those JSON observations for one day and discards compiled outputs. An explicit
+experimental input also retains bounded unsigned dependency tars for one day
+and reconstructs their subjects in a separate comparison job. These are
+intermediate candidates, not release images or bundles. There is no release
 artifact, image comparison, attestation, signing or deployment workflow here yet.
 Nothing in this repository currently authorizes a release or phone deployment.
 

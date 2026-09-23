@@ -53,8 +53,9 @@ verifier must compare them to current authenticated metadata and bind an exact
 No release build, release-artifact comparison, signing or deployment workflow or
 trusted signing root is selected or installed here. The branch-only unsigned
 libc diagnostic compares two fresh dependency observations per target when
-manually dispatched. It discards compiled outputs and does not produce an
-admitted release artifact. The sole Actions
+manually dispatched. By default it discards compiled outputs. An explicit
+experimental mode retains and reconstructs bounded unsigned dependency tars
+for one day. Neither mode produces an admitted release artifact. The sole Actions
 environment secret is the
 temporary private-infrastructure read key described above; there are no
 signing keys, OIDC grants, release artifacts or promotion dispatches. The

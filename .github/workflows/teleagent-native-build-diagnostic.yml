@@ -9,9 +9,17 @@ on:
       - scripts/hosted-native-build-diagnostic.py
       - scripts/project-teleagent-data-in-quota.py
       - scripts/compare-native-diagnostic-observations.py
+      - scripts/compare-retained-native-candidates.py
+      - scripts/test_compare_retained_native_candidates.py
       - scripts/retain-native-dependency-tar.py
       - scripts/test_retain_native_dependency_tar.py
   workflow_dispatch:
+    inputs:
+      retain_candidate:
+        description: Retain unsigned dependency tars for same-run comparison
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -81,14 +89,14 @@ jobs:
             'a548aad7e6018d57bbddad2eaf99a2fc7ffe1f69ae328982a9d97925448c9cf0  infrastructure/scripts/release/teleagent-offline-materials.py' \
             '0f976d28a4d774346df1942c07fcb40ea1c5d055be9d906e877f4b2428843857  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
             | sha256sum --check --status
-      - name: Check source-only deterministic dependency archive boundary
+      - name: Check bounded native observation and archive boundaries
         shell: bash
         env:
           TELEAGENT_TEST_EXPORT_SOURCE: ${{ github.workspace }}/infrastructure/scripts/release/teleagent-offline-export-inventory.py
         run: |
           set -euo pipefail
           python3 -I -B -m unittest discover -s authority/scripts \
-            -p test_retain_native_dependency_tar.py -v
+            -p 'test_*native*.py' -v
       - name: Acquire only public inputs as data
         shell: bash
         run: |
@@ -125,12 +133,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-observations"
+          case '${{ inputs.retain_candidate }}' in
+            true) mode=--hosted-retain ;;
+            false|'') mode=--hosted ;;
+            *) exit 1 ;;
+          esac
           sudo env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
             GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted \
             GITHUB_REPOSITORY=javAlborz/teleagent-release-authority \
             GITHUB_REF=refs/heads/feat/hosted-capacity-probe-20260923 \
             /usr/bin/python3 -I authority/scripts/hosted-native-build-diagnostic.py \
-            --hosted "$GITHUB_WORKSPACE" "$RUNNER_TEMP" "${{ matrix.target }}" \
+            "$mode" "$GITHUB_WORKSPACE" "$RUNNER_TEMP" "${{ matrix.target }}" \
             | tee "$RUNNER_TEMP/teleagent-observations/${{ matrix.target }}-${{ matrix.replica }}.json"
           echo 'Unsigned diagnostic completed; no release, scanner, signer or installation was authorized.'
       - name: Retain only bounded unsigned observation for same-run comparison
@@ -139,6 +152,21 @@ jobs:
         with:
           name: unsigned-observation-${{ matrix.target }}-${{ matrix.replica }}
           path: ${{ runner.temp }}/teleagent-observations/${{ matrix.target }}-${{ matrix.replica }}.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Bind unique unsigned candidate tar name
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_candidate == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv "$RUNNER_TEMP/teleagent-retained/${{ matrix.target }}.tar" \
+             "$RUNNER_TEMP/teleagent-retained/${{ matrix.target }}-${{ matrix.replica }}.tar"
+      - name: Retain only the unsigned dependency tar for same-run comparison
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_candidate == true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-native-candidate-${{ matrix.target }}-${{ matrix.replica }}
+          path: ${{ runner.temp }}/teleagent-retained/${{ matrix.target }}-${{ matrix.replica }}.tar
           if-no-files-found: error
           retention-days: 1
 
@@ -179,4 +207,20 @@ jobs:
           set -euo pipefail
           python3 -I authority/scripts/compare-native-diagnostic-observations.py \
             --root "$RUNNER_TEMP/teleagent-observations" \
+            --plan-sha256 e22dcf6673f42fb76352fb5dda37438c8e9e77eea4bb737cf95c7239f04dfa80
+      - name: Read four unsigned dependency tars
+        if: inputs.retain_candidate == true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: unsigned-native-candidate-*
+          path: ${{ runner.temp }}/teleagent-retained
+          merge-multiple: true
+      - name: Reconstruct and compare retained dependency subjects
+        if: inputs.retain_candidate == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I authority/scripts/compare-retained-native-candidates.py \
+            --observations "$RUNNER_TEMP/teleagent-observations" \
+            --tars "$RUNNER_TEMP/teleagent-retained" \
             --plan-sha256 e22dcf6673f42fb76352fb5dda37438c8e9e77eea4bb737cf95c7239f04dfa80

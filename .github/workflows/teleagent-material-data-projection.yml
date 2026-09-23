@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: aace875a87e634ea2b3bc51712556020033720d5
+          ref: 5bd6ff605ea16f6a387a67a4d4776c2f3b400a34
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C infrastructure rev-parse HEAD)" = aace875a87e634ea2b3bc51712556020033720d5
+          test "$(git -C infrastructure rev-parse HEAD)" = 5bd6ff605ea16f6a387a67a4d4776c2f3b400a34
           test "$(git -C app rev-parse HEAD)" = 6cbcc3aadab9053361487d1368c45e74d0a19789
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
           test -z "$(git -C infrastructure status --porcelain)"

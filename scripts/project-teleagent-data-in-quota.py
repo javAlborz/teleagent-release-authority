@@ -118,7 +118,7 @@ def main():
     storage = runpy.run_path(str(authority / 'scripts/hosted-storage-admission.py'),
                              run_name='teleagent_projected_storage')
     with storage['admitted_storage']() as (mounted, result):
-        mounted.parent.chmod(0o711)
+        mounted.parent.chmod(0o755)
         os.chown(mounted, uid, gid)
         materials = mounted / 'teleagent-materials'
         engines = mounted / 'teleagent-engines'

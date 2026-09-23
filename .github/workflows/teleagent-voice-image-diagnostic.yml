@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 41dc9f92d48befe62edf7f535c4e054bbe907275
+          ref: 7118c62f2724d07a30648fa245b23ca4ce3deb2e
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -55,14 +55,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C infrastructure rev-parse HEAD)" = 41dc9f92d48befe62edf7f535c4e054bbe907275
+          test "$(git -C infrastructure rev-parse HEAD)" = 7118c62f2724d07a30648fa245b23ca4ce3deb2e
           test "$(git -C app rev-parse HEAD)" = 6cbcc3aadab9053361487d1368c45e74d0a19789
           test "$(git -C app show -s --format=%T HEAD)" = d11823c9d077abb0ce020d36cd2629b9d4c4eee4
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C infrastructure status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           printf '%s\n' \
-            'dd1119b1440bb3ddbbd69e767bae4a3eda3212140cbddf51638d499f97576fa3  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
+            'f77cc1dc033fe80fd067c4da745802bbaba6dc55f730953b09a5c1e988ccc3bc  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
             | sha256sum --check --status
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-recipe"
           python3 -I - "$RUNNER_TEMP/teleagent-voice-recipe" <<'PY'

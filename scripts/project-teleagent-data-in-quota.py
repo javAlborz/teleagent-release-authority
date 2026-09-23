@@ -2,6 +2,7 @@
 """Project pinned Teleagent inputs as data inside one disposable 32 GiB volume."""
 
 import argparse
+import ast
 from contextlib import contextmanager
 import ctypes
 import errno
@@ -22,7 +23,7 @@ TRIVY_MANIFEST_SHA256 = '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2faf
 MATERIAL_PLAN_SHA256 = '1bee8f8df904286a1dcddcc23471fa10cfb96b662b4af68feb866cfc18114cd5'
 ENGINE_PLAN_SHA256 = '5c2dfee0e305d5a84a7debb142b7ddbae3b4dc855a89126622449ebbd2c6e993'
 SOURCE_EPOCH = 1790168683  # Exact pinned app commit's committer timestamp.
-UNSIGNED_PLAN_SHA256 = 'e9904348d4daf0453842217aacd07148373e14e376279c9614e0adbde585d36c'
+UNSIGNED_PLAN_SHA256 = 'a0534189bc561ce59b7140429f10c4a57911057a4239c66db708dba89f617886'
 
 
 def need(condition, message):
@@ -107,6 +108,28 @@ def stage_small_tree(source, destination, rows):
         folder.chmod(0o555)
         os.utime(folder, ns=(0, 0))
     return len(names)
+
+
+def payload_pins_match(source, expected_sha256, material_plan):
+    """Compare the payload's literal manifest pins without executing its code."""
+    same_file(source, expected_sha256)
+    data = source.read_bytes()
+    need(len(data) <= 4 * 1024 ** 2 and
+         hashlib.sha256(data).hexdigest() == expected_sha256,
+         'payload pin source bytes differ')
+    try:
+        tree = ast.parse(data, filename='pinned-payload-data')
+        assignments = [node for node in tree.body if isinstance(node, ast.Assign) and
+                       len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and
+                       node.targets[0].id == 'PINS']
+        need(len(assignments) == 1, 'payload manifest pin declaration differs')
+        pins = ast.literal_eval(assignments[0].value)
+    except (SyntaxError, ValueError, TypeError, MemoryError) as error:
+        raise RuntimeError('payload manifest pins are not literal data') from error
+    need(type(pins) is dict and pins == material_plan['acquisitionManifestPins'],
+         'payload manifest pins differ from projected material plan')
+    same_file(source, expected_sha256)
+    return True
 
 
 @contextmanager
@@ -226,6 +249,12 @@ def project(on_projected=None, *, workspace=None, runner_temp=None):
                          ('executable', 'runtimeAccepted', 'buildExecuted',
                           'signatureVerified', 'promotionAuthorized')),
                      'unsigned offline plan authority or bindings differ')
+                payload_row = next(row for row in plan['payloadSourceClosure']
+                                   if row['path'] == 'teleagent-offline-build.py')
+                need(payload_pins_match(release / payload_row['path'],
+                                        payload_row['sha256'],
+                                        json.loads((sealed_materials / 'material-plan.json').read_bytes())),
+                     'payload material pin check refused')
                 app_projection = mounted / 'teleagent-app-source'
                 payload_projection = mounted / 'teleagent-payload-source'
                 app_count = stage_small_tree(app, app_projection, pairs)
@@ -257,6 +286,7 @@ def project(on_projected=None, *, workspace=None, runner_temp=None):
         result['privateInputReadOnlyAliasesVerified'] = True
         result['appSourcePairFilesProjected'] = app_count
         result['payloadSourceFilesProjected'] = payload_count
+        result['payloadMaterialPinsMatched'] = True
         result['teleagentBuildExecuted'] = on_projected is not None
         mounted.parent.chmod(0o700)
     need(result['cleanupVerified'] is True and result['afterWorkloadQuota']['availableBytes'] >=

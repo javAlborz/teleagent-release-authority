@@ -74,6 +74,21 @@ def fixed(argv, timeout=60, maximum=16384):
     return stdout
 
 
+def tail(path, maximum=2048):
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except FileNotFoundError:
+        return '<absent>'
+    try:
+        info = os.fstat(fd)
+        need(stat.S_ISREG(info.st_mode) and info.st_size <= 64 * 1024 * 1024,
+             'native diagnostic log metadata differs')
+        os.lseek(fd, max(0, info.st_size - maximum), os.SEEK_SET)
+        return os.read(fd, maximum).decode('utf-8', 'replace')
+    finally:
+        os.close(fd)
+
+
 def mounted_exec(path):
     """Enable execution of the quota only in the child mount namespace."""
     libc = ctypes.CDLL(None, use_errno=True)
@@ -209,10 +224,20 @@ def run_target(root, plan, probe):
                         ledger = probe['SEQUENCE']['Sequence']('glibc', plan['sourceEpoch'])
                         records = []
                         for phase in ('prepare', 'payload'):
-                            observed = probe['adapter_handoff'](
-                                root, adapter, invocation_id, boot_id, daemon_pid,
-                                target='glibc', phase=phase, epoch=plan['sourceEpoch'],
-                                sequence=ledger, deadline_seconds=1800)
+                            try:
+                                observed = probe['adapter_handoff'](
+                                    root, adapter, invocation_id, boot_id, daemon_pid,
+                                    target='glibc', phase=phase,
+                                    epoch=plan['sourceEpoch'], sequence=ledger,
+                                    deadline_seconds=1800)
+                            except Exception as error:
+                                raise RuntimeError(
+                                    'native ' + phase + ' adapter refused: ' + str(error) +
+                                    '; buildctl tail=' + tail(build_log) +
+                                    '; daemon tail=' + tail(log) +
+                                    '; runc tail=' + tail(Path(
+                                        '/state/runc-overlayfs/executor/runc-log.json'))
+                                ) from error
                             need(observed['sequenceClaimedBeforeDelegate'] is True,
                                  'native phase was not claimed before runc')
                             container_id = observed['containerId']

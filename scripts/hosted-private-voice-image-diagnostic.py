@@ -160,13 +160,13 @@ def inside(mounted):
         Path('/run/teleagent-build/runc').mkdir(mode=0o700)
         for generated in plan['generatedFiles']:
             path = Path('/infra/voice-image') / generated['path']
-            path.write_text(generated['content'], encoding='ascii')
+            path.write_text(generated['content'])
             need(hashlib.sha256(path.read_bytes()).hexdigest() == generated['sha256'],
                  'voice generated recipe file differs')
         for generated in native_plan['generatedFiles']:
             path = Path('/infra') / generated['path']
             path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            path.write_text(generated['content'], encoding='ascii')
+            path.write_text(generated['content'])
             need(hashlib.sha256(path.read_bytes()).hexdigest() == generated['sha256'],
                  'private native daemon support file differs')
         config = Path('/infra/buildkitd.toml')

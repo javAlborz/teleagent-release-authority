@@ -1,0 +1,79 @@
+name: Teleagent real bundle private host contract diagnostic only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-real-bundle-host-contract-diagnostic.yml
+      - scripts/verify-real-bundle-host-contract-diagnostic.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify:
+    name: verify-exact-unsigned-bundle-in-disposable-host-fixture-no-release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: teleagent-private-source-read
+    steps:
+      - name: Require exact hosted branch and matched unsigned closure
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 4194304
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35939971147" \
+            --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
+            | { read -r status conclusion head branch
+                test "$status" = completed
+                test "$conclusion" = success
+                test "$head" = 39b4cbd334d9a87a696ef4f36fe8cc16a1b93c02
+                test "$branch" = feat/hosted-capacity-probe-20260923
+              }
+      - name: Read exact public diagnostic source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          path: authority
+      - name: Read exact private verifier source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/homelab-infrastructure
+          ref: 38784c787c353033a82a480611be874e4e123002
+          ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
+          persist-credentials: false
+          path: infrastructure
+          sparse-checkout: |
+            scripts/hosts/verify-teleagent-release-closure.py
+      - name: Bind exact source and read one exact unsigned bundle as data
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C infrastructure rev-parse HEAD)" = 38784c787c353033a82a480611be874e4e123002
+          test -z "$(git -C authority status --porcelain)"
+          test -z "$(git -C infrastructure status --porcelain)"
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-host-contract-input"
+          gh run download 35939971147 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-release-bundle-1 \
+            --dir "$RUNNER_TEMP/teleagent-host-contract-input"
+          test "$(find "$RUNNER_TEMP/teleagent-host-contract-input" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 2
+      - name: Exercise private host verifier against complete bundle in synthetic test root
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I authority/scripts/verify-real-bundle-host-contract-diagnostic.py \
+            --bundle "$RUNNER_TEMP/teleagent-host-contract-input/teleagent-release.diagnostic.tar" \
+            --verifier-source infrastructure/scripts/hosts/verify-teleagent-release-closure.py
+          echo 'Host source contract diagnostic passed with synthetic approval only; no installation or release approval.'

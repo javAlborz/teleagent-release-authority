@@ -43,10 +43,10 @@ jobs:
           for row in \
             '35935470213 197be7276c00fb9d1eb89b4739eec6dcec9e6b14' \
             '35936132628 135fff99bd109d43f58bbb4778df1c022afff746' \
-            '35933905774 d21efeadd5a23be4127133bcee9a666a391cf756' \
-            '35934797140 eb059882c1b4622ddee7f61ae1a7ef685493cf13' \
-            '35936559541 f0302692f7c37eee24492be6cf1d2721660f5100' \
-            '35937133744 ebf67bb2c9ac1536ada30274272cf6acb39d558b'; do
+            '35939655157 6f5b16eb7064e77666c7eae3b4b03538541b2885' \
+            '35939701056 e69e7fdff18ff54f04dfb31dc9fde5dc4dc80459' \
+            '35939803701 7e35c9248a76960683aaf7b44844017a323d5d9c' \
+            '35939705048 e69e7fdff18ff54f04dfb31dc9fde5dc4dc80459'; do
             read -r run_id head <<< "$row"
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
               --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 4279253269c71acfda20916707d26b4e51591c16
+          ref: fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
           persist-credentials: false
           path: app
       - name: Bind checked-out source identities
@@ -74,8 +74,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C app rev-parse HEAD)" = 4279253269c71acfda20916707d26b4e51591c16
-          test "$(git -C app show -s --format=%T HEAD)" = 4cee03901bd9d63e76df086e54e1ba490b98cf68
+          test "$(git -C app rev-parse HEAD)" = fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
+          test "$(git -C app show -s --format=%T HEAD)" = 9729bffab57c1c45325f143de61d44cfa9d267ce
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C app status --porcelain)"
       - name: Acquire fixed public provider and tool inputs as data
@@ -98,10 +98,10 @@ jobs:
           gh run download 35935470213 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-observation-glibc-retry \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 35933786693 --repo "$GITHUB_REPOSITORY" \
+          gh run download 35939175301 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-voice-image-diagnostic \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 35937133744 --repo "$GITHUB_REPOSITORY" \
+          gh run download 35939705048 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-voice-sbom-1 \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
           test "$(find "$RUNNER_TEMP/teleagent-release-inputs" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 4

@@ -18,13 +18,15 @@ import subprocess
 import sys
 import tarfile
 
-APP = '4279253269c71acfda20916707d26b4e51591c16'
-TREE = '4cee03901bd9d63e76df086e54e1ba490b98cf68'
-EPOCH = 1790204008
+APP = 'fbeaf0f22a73a575c322b3e0c05f0fa7992b919f'
+TREE = '9729bffab57c1c45325f143de61d44cfa9d267ce'
+EPOCH = 1790210096
+NATIVE_EPOCH = 1790204008
 PLAN = '877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904'
+SOURCE_PAIRS = 'dada99e66a0831b7ab974c392affcabe13b4c1ace13d2e9c9b65155d3c7900a9'
 GLIBC_TAR = '3001c2ffb4f6cfda7032ee7a3dda684fcae0991860491be38e205bdf51e5f10a'
-VOICE_TAR = '3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01'
-VOICE_SBOM = 'e36e904711fe2b7982eaaab1f427011dc011ed96c7ec369db4a252efa08e5ab4'
+VOICE_TAR = 'd0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732'
+VOICE_SBOM = '7697f41f59fe91909ceca15afd3b98ca33794b8082375899bdf2a55e3b574e76'
 NODE_ARCHIVE = '14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647'
 NODE_BINARY = 'bc17c508ffeed0ec622934f9b7fa72f8e78da65350e63c3eceb56fa688aa5e12'
 SYFT_ARCHIVE = '2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f'
@@ -128,6 +130,18 @@ def source_tree(app, work, release):
     return count
 
 
+def check_dependency_source_pairs(app):
+    pairs_path = Path(__file__).resolve().parents[1] / 'inputs/teleagent/source-pairs-patched-20260923.json'
+    digest(pairs_path, SOURCE_PAIRS, 1_000_000)
+    pairs = json.loads(pairs_path.read_bytes())
+    need(type(pairs) is list and len(pairs) == 12 and
+         all(type(row) is dict and set(row) == {'path', 'sha256'} for row in pairs),
+         'pinned dependency source-pair record differs')
+    for row in pairs:
+        safe_path(row['path'])
+        digest(app / row['path'], row['sha256'], 4_000_000)
+
+
 def native_dependencies(tar_path, observation_path, release):
     digest(tar_path, GLIBC_TAR, 200_000_000)
     comparator = runpy.run_path(str(Path(__file__).with_name(
@@ -138,9 +152,9 @@ def native_dependencies(tar_path, observation_path, release):
     record = observation['projectedCallbackResult']['retainedCandidate']
     need(type(record) is dict and set(record) == comparator['RECORD_KEYS'] and
          record['tarSha256'] == GLIBC_TAR and record['target'] == 'glibc' and
-         record['sourceEpoch'] == EPOCH and record['signatureVerified'] is False and
+         record['sourceEpoch'] == NATIVE_EPOCH and record['signatureVerified'] is False and
          record['releaseApproved'] is False, 'native observation differs')
-    comparator['check_tar'](tar_path, 'glibc', record, EPOCH)
+    comparator['check_tar'](tar_path, 'glibc', record, NATIVE_EPOCH)
     copied = 0
     with tarfile.open(tar_path, 'r:') as archive:
         for member in archive:
@@ -234,6 +248,7 @@ def build(args):
     need(work.is_absolute() and work.is_dir() and not any(work.iterdir()),
          'release diagnostic work root must be empty')
     release = work / 'release'
+    check_dependency_source_pairs(args.app)
     source_count = source_tree(args.app, work, release)
     dependency_files = native_dependencies(args.glibc_tar, args.glibc_observation,
                                            release)

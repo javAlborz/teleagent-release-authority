@@ -17,6 +17,9 @@ SPEC.loader.exec_module(DECIDE)
 
 
 class ReleaseDecisionTests(unittest.TestCase):
+    def test_selected_input_manifests_match_owner_policy(self):
+        self.assertEqual(DECIDE.verify_selected_inputs(), DECIDE.INPUT_SELECTION_SHA)
+
     def test_approval_requires_exact_protected_main_context(self):
         context = {
             'GITHUB_ACTIONS': 'true',

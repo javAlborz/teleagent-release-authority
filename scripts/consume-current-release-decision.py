@@ -54,6 +54,7 @@ def consume(verified, decision, revision, now):
          decision.get('voiceImageSha256') == POLICY.VOICE_SHA and
          decision.get('voiceImageConfigDigest') == POLICY.VOICE_CONFIG and
          decision.get('providerCliManifestSha256') == POLICY.PROVIDER_MANIFEST and
+         decision.get('inputSelectionSha256') == POLICY.INPUT_SELECTION_SHA and
          decision.get('scanReportSha256') == POLICY.SCAN_SHA and
          decision.get('scanDatabaseMetadataSha256') == POLICY.DB_METADATA_SHA and
          decision.get('scanTargets') == [
@@ -63,10 +64,7 @@ def consume(verified, decision, revision, now):
          decision.get('registryReference') is None and
          decision.get('registryManifestDigest') is None and
          decision.get('releaseId') == 'sha256-' + POLICY.MANIFEST_SHA and
-         decision.get('sourceRuns') == {
-             'bundle': 35992749716,
-             'imageComparison': 35992359796,
-             'scan': 36028598666},
+         decision.get('sourceRuns') == POLICY.SOURCE_RUNS,
          'signed release decision differs from the fixed policy')
     next_update = datetime.fromisoformat(
         decision['scanDatabaseNextUpdate'].replace('Z', '+00:00'))

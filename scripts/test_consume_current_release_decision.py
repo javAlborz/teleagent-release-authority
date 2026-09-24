@@ -27,6 +27,7 @@ def fixture():
         'voiceImageSha256': POLICY.VOICE_SHA,
         'voiceImageConfigDigest': POLICY.VOICE_CONFIG,
         'providerCliManifestSha256': POLICY.PROVIDER_MANIFEST,
+        'inputSelectionSha256': POLICY.INPUT_SELECTION_SHA,
         'scanReportSha256': POLICY.SCAN_SHA,
         'scanDatabaseMetadataSha256': POLICY.DB_METADATA_SHA,
         'scanDatabaseNextUpdate': '2026-09-25T13:23:01.282626+00:00',
@@ -38,10 +39,7 @@ def fixture():
         'registryReference': None,
         'registryManifestDigest': None,
         'environment': 'hermes-shared',
-        'sourceRuns': {
-            'bundle': 35992749716,
-            'imageComparison': 35992359796,
-            'scan': 36028598666},
+        'sourceRuns': POLICY.SOURCE_RUNS,
     }
     decision = POLICY.decision(candidate, authorize=True,
                                environment={

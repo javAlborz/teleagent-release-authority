@@ -27,7 +27,9 @@ verifier must compare them to current authenticated metadata and bind an exact
 1. An owner-selected, machine-verified source and input manifest binds the exact application and
    infrastructure commits, offline material and engine digests, payload source
    closure, base-image manifests, epoch, and build policy revision. Refresh
-   time-sensitive scanner data and independently accept signatures and roots.
+   time-sensitive scanner data. Record the selected upstream roots and exact
+   digests; verify upstream signatures where available and explicitly record
+   any digest-pinned origin accepted without an independently verified signature.
 2. Two fresh, isolated GitHub-hosted build jobs independently construct the
    same unsigned release from the same admitted inputs. Each job proves its
    namespace, network, cgroup, filesystem, storage quota, process-lifetime and
@@ -63,6 +65,40 @@ temporary private-infrastructure read key described above is the sole Actions
 environment secret; diagnostic OIDC grants do not convey release authority.
 Keep the live phone locked until an independently verified release and
 installation satisfy every remaining gate.
+
+## Current candidate selection, September 24
+
+The current candidate is application revision
+`5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb` and complete bundle
+SHA-256 `35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b`.
+The authority's current decision source selects the exact checked-in
+`apk.json`, `engine.json`, `indexes.json`, patched source-pair, and `tools.json`
+input manifests by full SHA-256; their canonical selection digest is
+`bb2a08960b9ef3b6279920a083eea4ba1fc45fe7c9a2e5713bbe12028f3caa59`.
+The older `trivy.json` is excluded from that build selection because its
+database has expired. The current scan is bound separately to run
+`36028598666`, its exact report and database metadata, and its
+2026-09-25 13:23:01 UTC database expiry.
+
+Successful hosted branch run `36032028804` compared both complete bundle
+replicas, checked the release manifest and current scanner report, and
+produced a decision with `scanApproved=false` and `releaseApproved=false`.
+Its signing and consuming jobs were skipped. The source also checks eight
+exact successful hosted run IDs, revisions, workflow paths, events and first
+attempts before fetching artifacts. Those earlier jobs include isolated native
+builds, public and private voice-image construction, image comparison, SBOM,
+two independent bundle assemblies, and fresh scan. A successful run result
+proves those diagnostic checks ran, but does not retroactively make their
+diagnostic labels into approval.
+
+For this single-user release, the owner policy selects the digest-pinned
+BuildKit asset from the upstream GitHub release and the fresh Trivy database
+from its pinned official container repository digest as roots. Their
+acquisition manifests report `signatureVerified=false`; this decision makes
+the transport/origin and full digest the trust boundary and does not claim
+upstream signature verification. The APK indexes and packages have separately
+verified Alpine signatures. The bundle still needs the protected-main signer,
+independent consuming verifier, and Hermes host profile before installation.
 
 ## Solo-owner source governance
 

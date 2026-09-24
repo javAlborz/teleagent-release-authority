@@ -34,6 +34,24 @@ AUTHORITY_REPO_ID = '1383172221'
 WORKFLOW = '.github/workflows/teleagent-current-release-decision.yml'
 PREDICATE_TYPE = 'https://github.com/javAlborz/teleagent-release-authority/attestations/release-decision/v1'
 HEX40 = re.compile(r'[a-f0-9]{40}\Z')
+INPUT_MANIFESTS = {
+    'apk.json': 'dcd6c02ebbf9d26efc9f7bce8c58c9a2ad9dfb6d06da36689cebfe56e276338d',
+    'engine.json': 'fa6ca7d6da2b13855fe1d0ddeed6b6b36b756e7c917f78c59c2384a1b5e77ab5',
+    'indexes.json': '1194d3519645cc83f07d791dbc23aa7dcfa750a5f2eea06b8ee5378bafe7f620',
+    'source-pairs-patched-20260923.json': 'dada99e66a0831b7ab974c392affcabe13b4c1ace13d2e9c9b65155d3c7900a9',
+    'tools.json': '54f917a136554099a3872abbdd2965483babec33f71d45f4cbb0eaa8f30badb8',
+}
+INPUT_SELECTION_SHA = 'bb2a08960b9ef3b6279920a083eea4ba1fc45fe7c9a2e5713bbe12028f3caa59'
+SOURCE_RUNS = {
+    'nativeBuild': 35935470213,
+    'publicVoiceImage': 35992034723,
+    'imageComparison': 35992359796,
+    'initialScan': 35992468711,
+    'voiceSbom': 35992525759,
+    'privateImageAttestation': 35992626604,
+    'bundle': 35992749716,
+    'freshScan': 36028598666,
+}
 
 
 def need(condition, message):
@@ -169,9 +187,24 @@ def verify_scan(image, report, metadata, check, now):
     return computed
 
 
+def verify_selected_inputs():
+    root = HERE.parent / 'inputs/teleagent'
+    need(set(path.name for path in root.iterdir() if path.is_file()) ==
+         set(INPUT_MANIFESTS) | {'source-pairs.json', 'trivy.json'},
+         'authority input manifest set differs')
+    for name, digest in INPUT_MANIFESTS.items():
+        file_hash(root / name, 5_000_000, digest)
+    selection = (json.dumps(INPUT_MANIFESTS, sort_keys=True,
+                            separators=(',', ':')) + '\n').encode('ascii')
+    need(hashlib.sha256(selection).hexdigest() == INPUT_SELECTION_SHA,
+         'selected input policy digest differs')
+    return INPUT_SELECTION_SHA
+
+
 def verify_inputs(first_bundle, second_bundle, first_summary, second_summary,
                   image, report, metadata, check, now):
     need(now.tzinfo is not None, 'release decision time must be UTC-aware')
+    selected_inputs = verify_selected_inputs()
     compare_bundles(first_bundle, second_bundle)
     summaries = [bounded_json(path, 65536) for path in
                  (first_summary, second_summary)]
@@ -188,6 +221,7 @@ def verify_inputs(first_bundle, second_bundle, first_summary, second_summary,
         'voiceImageSha256': VOICE_SHA,
         'voiceImageConfigDigest': VOICE_CONFIG,
         'providerCliManifestSha256': PROVIDER_MANIFEST,
+        'inputSelectionSha256': selected_inputs,
         'scanReportSha256': SCAN_SHA,
         'scanDatabaseMetadataSha256': DB_METADATA_SHA,
         'scanDatabaseNextUpdate': scan['databaseNextUpdate'],
@@ -197,11 +231,7 @@ def verify_inputs(first_bundle, second_bundle, first_summary, second_summary,
         'registryReference': manifest['voiceImage']['registryReference'],
         'registryManifestDigest': manifest['voiceImage']['registryManifestDigest'],
         'environment': 'hermes-shared',
-        'sourceRuns': {
-            'bundle': 35992749716,
-            'imageComparison': 35992359796,
-            'scan': 36028598666,
-        },
+        'sourceRuns': SOURCE_RUNS,
     }
 
 

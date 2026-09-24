@@ -3,7 +3,7 @@ name: Teleagent current release decision
 on:
   push:
     branches:
-      - feat/hosted-capacity-probe-20260923
+      - fix/teleagent-v3-gate-release
     paths:
       - .github/workflows/teleagent-current-release-decision.yml
       - scripts/verify-current-release-decision.py

@@ -247,11 +247,11 @@ def build(args):
     raw = work / 'release.raw.cdx.json'
     env = dict(os.environ, SYFT_CHECK_FOR_APP_UPDATE='false',
                SYFT_PARALLELISM='2', SYFT_FORMAT_CYCLONEDX_JSON_PRETTY='false')
-    result = subprocess.run([str(syft), 'scan', 'dir:' + str(release),
+    result = subprocess.run([str(syft), 'scan', 'dir:.',
                              '--source-name', 'teleagent-release',
                              '--source-version', APP,
                              '--output', 'cyclonedx-json@1.6=' + str(raw)],
-                            cwd='/', env=env, stdin=subprocess.DEVNULL,
+                            cwd=release, env=env, stdin=subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=600, check=False)
     need(result.returncode == 0 and len(result.stdout) <= 65536 and

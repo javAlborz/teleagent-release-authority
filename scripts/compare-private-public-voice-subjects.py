@@ -17,14 +17,14 @@ import tarfile
 
 MAX_ARCHIVE = 100 * 1024 * 1024
 EXPECTED = {
-    'private': ('26e8008bf8fde0f255c243ca0b6fe1487cddea4c72928d90d095076a480b031e',
+    'private': ('09881f8961f7d48bba756d5fcda67f0f3282d0c3a0a9b1aff1da6131ae917f06',
                 70074368, None),
-    'public': ('d0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732',
-               70074368, ['teleagent-voice-diagnostic:20260923']),
+    'public': ('ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220',
+               70074368, ['teleagent-voice-diagnostic:20260924']),
 }
-EXPECTED_IMAGE_MANIFEST = '59bce5a33e036fe159fc3988af4eeeb4b89861dfeece9290c1a9cdb9641a89fd'
-EXPECTED_CONFIG = 'e035e82ac22a0294f595c0a60fcce7457dfe8eaae93b16d3fc812db3b5f41d79'
-EXPECTED_APP = 'fbeaf0f22a73a575c322b3e0c05f0fa7992b919f'
+EXPECTED_IMAGE_MANIFEST = '6a0f070ea18affdeadb37cecc909bfae5300a44d2db92ee45657bad0c8745655'
+EXPECTED_CONFIG = '220c03e14d3bda11322a32f6757d05359bbf300d789d434caf71d15e96ccc39a'
+EXPECTED_APP = '5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb'
 
 
 def need(value, reason):

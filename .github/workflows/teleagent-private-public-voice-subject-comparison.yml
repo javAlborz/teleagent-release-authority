@@ -1,4 +1,4 @@
-name: Teleagent unsigned private/public voice image subject comparison only
+name: Teleagent current app unsigned private/public voice image subject comparison only
 
 on:
   push:
@@ -44,11 +44,11 @@ jobs:
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-private-voice" \
             "$RUNNER_TEMP/teleagent-public-voice"
-          gh run download 35945743348 --repo javAlborz/teleagent-release-authority \
-            --name unsigned-private-voice-image-diagnostic \
+          gh run download 35991961338 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-private-voice-image-current-app-diagnostic \
             --dir "$RUNNER_TEMP/teleagent-private-voice"
-          gh run download 35939187639 --repo javAlborz/teleagent-release-authority \
-            --name unsigned-voice-image-diagnostic \
+          gh run download 35992034723 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-voice-image-current-app-diagnostic \
             --dir "$RUNNER_TEMP/teleagent-public-voice"
       - name: Rehash all blobs and compare exact image subjects
         shell: bash

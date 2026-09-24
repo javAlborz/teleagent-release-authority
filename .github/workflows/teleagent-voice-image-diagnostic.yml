@@ -1,4 +1,4 @@
-name: Teleagent hosted voice image functional diagnostic only
+name: Teleagent current app hosted voice image functional diagnostic only
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 38784c787c353033a82a480611be874e4e123002
+          ref: 4482c7f19ddf91cadcdf449bb8d1849c14abcf73
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
+          ref: 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
           persist-credentials: false
           path: app
       - name: Bind checked-out inputs and render fixed recipe as data
@@ -55,14 +55,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C infrastructure rev-parse HEAD)" = 38784c787c353033a82a480611be874e4e123002
-          test "$(git -C app rev-parse HEAD)" = fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
-          test "$(git -C app show -s --format=%T HEAD)" = 9729bffab57c1c45325f143de61d44cfa9d267ce
+          test "$(git -C infrastructure rev-parse HEAD)" = 4482c7f19ddf91cadcdf449bb8d1849c14abcf73
+          test "$(git -C app rev-parse HEAD)" = 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
+          test "$(git -C app show -s --format=%T HEAD)" = 3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C infrastructure status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           printf '%s\n' \
-            '046a0f91e33954dd0d7adf36dee41165d0c6425fc0f8ab1ff780128ce59d2a58  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
+            '9f7829de408b82cce0625df00d1ab87113a297f92b8669ff949a84a336d27490  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
             | sha256sum --check --status
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-recipe"
           python3 -I - "$RUNNER_TEMP/teleagent-voice-recipe" <<'PY'
@@ -125,32 +125,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export SOURCE_DATE_EPOCH=1790210096
+          export SOURCE_DATE_EPOCH=1790247516
           docker buildx create --name teleagent-voice-diag --driver docker-container \
             --driver-opt image=moby/buildkit@sha256:a461e7f0ce921972028acfbed628d45663d83e67ac1230722c2b34cf72760a0d \
             --bootstrap
           docker buildx build --builder teleagent-voice-diag \
             --platform linux/amd64 --no-cache --network none \
-            --build-arg SOURCE_DATE_EPOCH=1790210096 \
+            --build-arg SOURCE_DATE_EPOCH=1790247516 \
             --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
             --build-context app="$GITHUB_WORKSPACE/app" \
             --build-context dependencies="$RUNNER_TEMP/teleagent-musl-dependencies" \
             --build-context materials="$RUNNER_TEMP/teleagent-apk-materials" \
             --file "$RUNNER_TEMP/teleagent-voice-recipe/Dockerfile" \
-            --tag teleagent-voice-diagnostic:20260923 \
+            --tag teleagent-voice-diagnostic:20260924 \
             --output "type=docker,dest=$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar,rewrite-timestamp=true" \
             "$RUNNER_TEMP/teleagent-voice-recipe"
           docker load --input "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
-          test "$(docker image inspect teleagent-voice-diagnostic:20260923 \
+          test "$(docker image inspect teleagent-voice-diagnostic:20260924 \
             --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
-            fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
+            5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
-            --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \
+            --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260924 \
             -e 'const fs=require("node:fs");for(const p of ["/app/voice-app/node_modules","/app/voice-app/node_modules/better-sqlite3","/app/voice-app/node_modules/node_modules/better-sqlite3"]){console.log(p,fs.existsSync(p))}console.log(require.resolve.paths("better-sqlite3"))'
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
-            --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \
+            --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260924 \
             -e 'const DB=require("better-sqlite3");const db=new DB(":memory:");db.exec("create table smoke(n integer)");db.close();console.log("VOICE_NATIVE_SMOKE_OK")'
           sha256sum "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
           docker buildx rm teleagent-voice-diag
@@ -158,7 +158,7 @@ jobs:
       - name: Retain one-day unsigned image archive for independent comparison
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: unsigned-voice-image-diagnostic
+          name: unsigned-voice-image-current-app-diagnostic
           path: ${{ runner.temp }}/teleagent-voice-image-diagnostic.docker.tar
           if-no-files-found: error
           retention-days: 1

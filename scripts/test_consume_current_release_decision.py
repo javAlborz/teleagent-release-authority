@@ -70,8 +70,10 @@ class ConsumerTests(unittest.TestCase):
     def test_exact_predicate_yields_approval(self):
         verified, decision = fixture()
         approval = CONSUME.consume(verified, decision, REVISION, NOW)
+        self.assertEqual(approval['version'], 2)
         self.assertEqual(approval['environment'], 'hermes-shared')
         self.assertEqual(approval['bundleSha256'], 'sha256:' + POLICY.BUNDLE_SHA)
+        self.assertEqual(approval['authorityRevision'], REVISION)
 
     def test_changed_scan_coverage_and_subject_refused(self):
         verified, decision = fixture()

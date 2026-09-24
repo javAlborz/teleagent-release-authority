@@ -99,6 +99,11 @@ the transport/origin and full digest the trust boundary and does not claim
 upstream signature verification. The APK indexes and packages have separately
 verified Alpine signatures. The bundle still needs the protected-main signer,
 independent consuming verifier, and Hermes host profile before installation.
+The proposed v2 host approval carries the authority repository ID and main
+revision, signed decision digest, selected input digest, and scan database
+expiry alongside the exact bundle and release IDs. The Hermes host verifier
+must pin this accepted authority decision and reject a copied or edited
+approval before the release can be installed or started.
 
 ## Solo-owner source governance
 

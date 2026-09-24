@@ -3,6 +3,7 @@
 
 import argparse
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -72,7 +73,7 @@ def consume(verified, decision, revision, now):
          next_update > now + timedelta(hours=1),
          'the signed scan database is no longer fresh')
     return {
-        'version': 1,
+        'version': 2,
         'application': 'teleagent',
         'environment': 'hermes-shared',
         'releaseId': 'sha256-' + POLICY.MANIFEST_SHA,
@@ -84,6 +85,13 @@ def consume(verified, decision, revision, now):
         'voiceImageRegistryReference': None,
         'voiceImageRegistryDigest': None,
         'providerCliManifestSha256': POLICY.PROVIDER_MANIFEST,
+        'authorityRepositoryId': int(POLICY.AUTHORITY_REPO_ID),
+        'authorityRevision': revision,
+        'signedDecisionSha256': 'sha256:' + hashlib.sha256(
+            (json.dumps(decision, sort_keys=True, separators=(',', ':'),
+                        allow_nan=False) + '\n').encode('ascii')).hexdigest(),
+        'inputSelectionSha256': 'sha256:' + POLICY.INPUT_SELECTION_SHA,
+        'scanDatabaseNextUpdate': decision['scanDatabaseNextUpdate'],
     }
 
 

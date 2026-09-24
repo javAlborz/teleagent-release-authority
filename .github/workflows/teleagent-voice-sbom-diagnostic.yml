@@ -1,4 +1,4 @@
-name: Teleagent unsigned voice image SBOM diagnostic only
+name: Teleagent current app unsigned voice image SBOM diagnostic only
 
 on:
   push:
@@ -32,26 +32,26 @@ jobs:
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35939655157" \
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35992359796" \
             --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
             | { read -r status conclusion head branch
                 test "$status" = completed
                 test "$conclusion" = success
-                test "$head" = 6f5b16eb7064e77666c7eae3b4b03538541b2885
+                test "$head" = e0de0feccb93b86e86c8d304efe781ba9c3be69a
                 test "$branch" = feat/hosted-capacity-probe-20260923
               }
       - name: Read exact app source for its SBOM normalizer
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
+          ref: 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
           persist-credentials: false
           path: app
       - name: Bind exact application revision
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git -C app rev-parse HEAD)" = fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
+          test "$(git -C app rev-parse HEAD)" = 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
           test -z "$(git -C app status --porcelain)"
       - name: Retrieve exact unsigned image archive
         shell: bash
@@ -60,11 +60,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-sbom"
-          gh run download 35939175301 --repo "$GITHUB_REPOSITORY" \
-            --name unsigned-voice-image-diagnostic \
+          gh run download 35992034723 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-voice-image-current-app-diagnostic \
             --dir "$RUNNER_TEMP/teleagent-voice-sbom"
           printf '%s  %s\n' \
-            d0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732 \
+            ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220 \
             "$RUNNER_TEMP/teleagent-voice-sbom/teleagent-voice-image-diagnostic.docker.tar" \
             | sha256sum --check --status
       - name: Verify and execute only pinned Syft 1.51.0 on hosted runner
@@ -98,7 +98,7 @@ jobs:
           timeout --signal=TERM --kill-after=20s 600s \
             "$RUNNER_TEMP/teleagent-syft/syft" scan "docker-archive:$image" \
             --source-name teleagent-voice \
-            --source-version fbeaf0f22a73a575c322b3e0c05f0fa7992b919f \
+            --source-version 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb \
             --output "cyclonedx-json@1.6=$RUNNER_TEMP/teleagent-voice-sbom/voice.raw.cdx.json"
           python3 -E -s app/scripts/release/ci_release_support.py normalize-sbom \
             --source "$RUNNER_TEMP/teleagent-voice-sbom/voice.raw.cdx.json" \

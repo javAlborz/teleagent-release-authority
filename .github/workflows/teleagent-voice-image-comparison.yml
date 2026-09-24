@@ -1,0 +1,89 @@
+name: Teleagent unsigned voice image independent comparison only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-voice-image-comparison.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    name: compare-two-fixed-unsigned-hosted-image-archives-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Require exact hosted context and source runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          for run_id in 35939175301 35939187639; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+              --jq '[.status,.conclusion,.head_sha,.head_branch,.repository.full_name] | @tsv' \
+              | { read -r status conclusion head_sha branch repository
+                  test "$status" = completed
+                  test "$conclusion" = success
+                  test "$head_sha" = c5a7eeddd3813dd34dd052cf83bbb68f69b1b637
+                  test "$branch" = feat/hosted-capacity-probe-20260923
+                  test "$repository" = javAlborz/teleagent-release-authority
+                }
+          done
+      - name: Download both one-day unsigned image archives
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for run_id in 35939175301 35939187639; do
+            mkdir -m 0700 "$RUNNER_TEMP/$run_id"
+            gh run download "$run_id" --repo "$GITHUB_REPOSITORY" \
+              --name unsigned-voice-image-diagnostic --dir "$RUNNER_TEMP/$run_id"
+            path="$RUNNER_TEMP/$run_id/teleagent-voice-image-diagnostic.docker.tar"
+            test -f "$path"
+            test "$(stat -c %s "$path")" -ge 70000000
+            test "$(stat -c %s "$path")" -le 500000000
+            printf '%s  %s\n' \
+              d0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732 \
+              "$path" | sha256sum --check --status
+          done
+          cmp --silent \
+            "$RUNNER_TEMP/35939175301/teleagent-voice-image-diagnostic.docker.tar" \
+            "$RUNNER_TEMP/35939187639/teleagent-voice-image-diagnostic.docker.tar"
+      - name: Inspect archive identity as data, without loading or executing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I - "$RUNNER_TEMP/35939175301/teleagent-voice-image-diagnostic.docker.tar" <<'PY'
+          import json
+          import re
+          import sys
+          import tarfile
+
+          with tarfile.open(sys.argv[1], 'r:') as archive:
+              manifest_member = archive.getmember('manifest.json')
+              assert manifest_member.isfile() and manifest_member.size < 65536
+              manifest = json.load(archive.extractfile(manifest_member))
+              assert isinstance(manifest, list) and len(manifest) == 1
+              row = manifest[0]
+              assert row['RepoTags'] == ['teleagent-voice-diagnostic:20260923']
+              assert len(row['Layers']) >= 1
+              config_name = row['Config']
+              assert re.fullmatch(r'blobs/sha256/[0-9a-f]{64}', config_name)
+              config_member = archive.getmember(config_name)
+              assert config_member.isfile() and config_member.size < 1048576
+              config = json.load(archive.extractfile(config_member))
+              labels = config['config']['Labels']
+              assert labels['org.opencontainers.image.revision'] == 'fbeaf0f22a73a575c322b3e0c05f0fa7992b919f'
+              print('Two independent hosted image archives are byte-identical and contain the expected source label.')
+              print('signatureVerified=false releaseApproved=false scanApproved=false installed=false')
+          PY

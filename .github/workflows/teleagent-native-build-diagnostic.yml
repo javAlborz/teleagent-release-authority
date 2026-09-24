@@ -1,0 +1,231 @@
+name: Teleagent unsigned native build diagnostic
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-native-build-diagnostic.yml
+      - scripts/hosted-native-build-diagnostic.py
+      - scripts/project-teleagent-data-in-quota.py
+      - scripts/compare-native-diagnostic-observations.py
+      - scripts/compare-retained-native-candidates.py
+      - scripts/test_compare_retained_native_candidates.py
+      - scripts/retain-native-dependency-tar.py
+      - scripts/test_retain_native_dependency_tar.py
+  workflow_dispatch:
+    inputs:
+      retain_candidate:
+        description: Retain unsigned dependency tars for independent comparison
+        type: boolean
+        required: true
+        default: false
+      pair_only:
+        description: Retry one replica per libc target without same-run comparison
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  project:
+    name: unsigned-${{ matrix.target }}-${{ matrix.replica }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: teleagent-private-source-read
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [glibc, musl]
+        replica: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.pair_only == true && '["retry"]' || github.event_name == 'workflow_dispatch' && '["1","2"]' || '["1"]') }}
+    steps:
+      - name: Require the exact hosted authority branch and admission space
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          python3 - <<'PY'
+          import os
+          geometry = os.statvfs(os.environ['RUNNER_TEMP'])
+          available = geometry.f_bavail * geometry.f_frsize
+          inodes = geometry.f_favail
+          assert available >= 30 * 1024 ** 3 and inodes >= 100000
+          print({'availableBytes': available, 'availableInodes': inodes,
+                 'teleagentBuildExecuted': False})
+          PY
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          path: authority
+      - name: Read exact private infrastructure source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/homelab-infrastructure
+          ref: ccbede7c8f4cecf738d22a7f0784a7f216c71b1b
+          ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
+          persist-credentials: false
+          path: infrastructure
+          sparse-checkout: |
+            scripts/ci
+            scripts/release
+      - name: Read exact public application source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/teleagent
+          ref: 4279253269c71acfda20916707d26b4e51591c16
+          persist-credentials: false
+          path: app
+      - name: Bind exact checked-out revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C infrastructure rev-parse HEAD)" = ccbede7c8f4cecf738d22a7f0784a7f216c71b1b
+          test "$(git -C app rev-parse HEAD)" = 4279253269c71acfda20916707d26b4e51591c16
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git -C infrastructure status --porcelain)"
+          test -z "$(git -C app status --porcelain)"
+          test -z "$(git -C authority status --porcelain)"
+          printf '%s\n' \
+            '9caec3e0fee3c9fa44782dddeaa56f3e306aa22e6a36f0b94c218a4b9c7aed4f  infrastructure/scripts/release/teleagent-offline-materials.py' \
+            '4242e5372337e33600f35386943e17197901f1e2c7fade9272f91fd74baf5707  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
+            | sha256sum --check --status
+      - name: Check bounded native observation and archive boundaries
+        shell: bash
+        env:
+          TELEAGENT_TEST_EXPORT_SOURCE: ${{ github.workspace }}/infrastructure/scripts/release/teleagent-offline-export-inventory.py
+        run: |
+          set -euo pipefail
+          python3 -I -B -m unittest discover -s authority/scripts \
+            -p 'test_*native*.py' -v
+      - name: Acquire only public inputs as data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-inputs"
+          python3 -I infrastructure/scripts/ci/acquire-teleagent-npm-materials.py \
+            --app-root "$GITHUB_WORKSPACE/app" --output "$RUNNER_TEMP/teleagent-inputs/npm"
+          python3 -I infrastructure/scripts/ci/acquire-teleagent-oci-materials.py \
+            --output "$RUNNER_TEMP/teleagent-inputs/oci"
+          python3 -I infrastructure/scripts/ci/acquire-teleagent-trivy-db.py \
+            --output "$RUNNER_TEMP/teleagent-inputs/trivy" \
+            --manifest-digest sha256:59c3d4df5f33836eb5dc3b817478f35b546f79ed250b47ebf10d3dc94f1de75e
+          python3 -I authority/scripts/acquire-teleagent-fixed-inputs.py \
+            --inputs "$GITHUB_WORKSPACE/authority/inputs/teleagent" \
+            --output "$RUNNER_TEMP/teleagent-inputs/fixed"
+      - name: Bind identical fresh Trivy objects to the fixed reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I authority/scripts/bind-teleagent-trivy-reference.py \
+            --acquired "$RUNNER_TEMP/teleagent-inputs/trivy" \
+            --reference "$GITHUB_WORKSPACE/authority/inputs/teleagent/trivy.json"
+      - name: Require exact acquired manifest bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'cf92ba749d9405d7d29e547319b6af5ea26ecf9611cde0ca5e878e1eb23331f3  '"$RUNNER_TEMP"'/teleagent-inputs/npm/manifest.json' \
+            'bcde585dc9f5ac35c932c60f28004cd269e124f5a1a09a73f3335b3a56091d8f  '"$RUNNER_TEMP"'/teleagent-inputs/oci/manifest.json' \
+            '0d044673603e2e2c9c0ac23a8d0d9c7d694bae4f22542559e3f2fafe2012675c  '"$RUNNER_TEMP"'/teleagent-inputs/trivy/manifest.json' \
+            | sha256sum --check --status
+      - name: Run isolated unsigned dependency diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-observations"
+          case '${{ inputs.retain_candidate }}' in
+            true) mode=--hosted-retain ;;
+            false|'') mode=--hosted ;;
+            *) exit 1 ;;
+          esac
+          sudo env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+            GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted \
+            GITHUB_REPOSITORY=javAlborz/teleagent-release-authority \
+            GITHUB_REF=refs/heads/feat/hosted-capacity-probe-20260923 \
+            /usr/bin/python3 -I authority/scripts/hosted-native-build-diagnostic.py \
+            "$mode" "$GITHUB_WORKSPACE" "$RUNNER_TEMP" "${{ matrix.target }}" \
+            | tee "$RUNNER_TEMP/teleagent-observations/${{ matrix.target }}-${{ matrix.replica }}.json"
+          echo 'Unsigned diagnostic completed; no release, scanner, signer or installation was authorized.'
+      - name: Retain only bounded unsigned observation for same-run comparison
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-observation-${{ matrix.target }}-${{ matrix.replica }}
+          path: ${{ runner.temp }}/teleagent-observations/${{ matrix.target }}-${{ matrix.replica }}.json
+          if-no-files-found: error
+          retention-days: 1
+      - name: Bind unique unsigned candidate tar name
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_candidate == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv "$RUNNER_TEMP/teleagent-retained/${{ matrix.target }}.tar" \
+             "$RUNNER_TEMP/teleagent-retained/${{ matrix.target }}-${{ matrix.replica }}.tar"
+      - name: Retain only the unsigned dependency tar for same-run comparison
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_candidate == true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-native-candidate-${{ matrix.target }}-${{ matrix.replica }}
+          path: ${{ runner.temp }}/teleagent-retained/${{ matrix.target }}-${{ matrix.replica }}.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  compare:
+    name: compare-unsigned-native-observations
+    if: github.event_name == 'workflow_dispatch' && inputs.pair_only != true
+    needs: project
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Require exact hosted authority source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          path: authority
+      - name: Bind exact authority revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git -C authority status --porcelain)"
+      - name: Read four bounded unsigned observations
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: unsigned-observation-*
+          path: ${{ runner.temp }}/teleagent-observations
+          merge-multiple: true
+      - name: Compare independent same-run dependency subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I authority/scripts/compare-native-diagnostic-observations.py \
+            --root "$RUNNER_TEMP/teleagent-observations" \
+            --plan-sha256 877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904
+      - name: Read four unsigned dependency tars
+        if: inputs.retain_candidate == true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: unsigned-native-candidate-*
+          path: ${{ runner.temp }}/teleagent-retained
+          merge-multiple: true
+      - name: Reconstruct and compare retained dependency subjects
+        if: inputs.retain_candidate == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I authority/scripts/compare-retained-native-candidates.py \
+            --observations "$RUNNER_TEMP/teleagent-observations" \
+            --tars "$RUNNER_TEMP/teleagent-retained" \
+            --plan-sha256 877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904

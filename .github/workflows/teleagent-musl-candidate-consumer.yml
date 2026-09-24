@@ -1,0 +1,64 @@
+name: Teleagent unsigned musl candidate consumer only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-musl-candidate-consumer.yml
+      - scripts/extract-verified-musl-dependencies.py
+      - scripts/test_extract_verified_musl_dependencies.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reconstruct:
+    name: reconstruct-exact-unsigned-musl-dependencies-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Require exact hosted diagnostic branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Retrieve only the patched exact unsigned musl data
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-musl-inputs"
+          gh run download 35932701529 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-native-candidate-musl-1 \
+            --dir "$RUNNER_TEMP/teleagent-musl-inputs"
+          gh run download 35932701529 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-observation-musl-1 \
+            --dir "$RUNNER_TEMP/teleagent-musl-inputs"
+          python3 -I - "$RUNNER_TEMP/teleagent-musl-inputs" <<'PY'
+          from pathlib import Path
+          import sys
+          root = Path(sys.argv[1])
+          assert {item.name for item in root.iterdir()} == {'musl-1.tar', 'musl-1.json'}
+          PY
+      - name: Verify and atomically materialize unsigned dependencies as data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I scripts/extract-verified-musl-dependencies.py \
+            --tar "$RUNNER_TEMP/teleagent-musl-inputs/musl-1.tar" \
+            --observation "$RUNNER_TEMP/teleagent-musl-inputs/musl-1.json" \
+            --destination "$RUNNER_TEMP/teleagent-musl-dependencies"
+          test -d "$RUNNER_TEMP/teleagent-musl-dependencies/voice-app/node_modules"
+          echo 'Unsigned dependency reconstruction passed; no image, scanner, signer or release was run.'

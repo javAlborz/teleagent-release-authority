@@ -1,0 +1,53 @@
+name: Teleagent public hosted inert runtime proof
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-public-inert-runtime-proof.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inert:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: teleagent-private-source-read
+    steps:
+      - name: Require exact public hosted branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read pinned private runtime proof source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/homelab-infrastructure
+          ref: 3e3dccfcf71351243fb767dbc78555e5c0c5c394
+          ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
+          persist-credentials: false
+          path: infrastructure
+          sparse-checkout: scripts/release
+      - name: Execute only the pinned inert proof in a private outer scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C infrastructure rev-parse HEAD)" = 3e3dccfcf71351243fb767dbc78555e5c0c5c394
+          test -z "$(git -C infrastructure status --porcelain)"
+          work="$(mktemp -d /tmp/teleagent-runc-probe-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)"
+          test "$(stat -c %a "$work")" = 700
+          archive="$work/buildkit.tar.gz"
+          curl --fail --location --show-error --silent --retry 3 --max-time 180 \
+            'https://github.com/moby/buildkit/releases/download/v0.33.0/buildkit-v0.33.0.linux-amd64.tar.gz' \
+            --output "$archive"
+          sudo chown root:root "$work" "$archive"
+          sudo env -i PATH=/usr/bin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+            GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted \
+            GITHUB_REPOSITORY=javAlborz/teleagent-release-authority \
+            GITHUB_REF=refs/heads/feat/hosted-capacity-probe-20260923 \
+            /usr/bin/python3 -I infrastructure/scripts/release/teleagent-hosted-runc-probe.py \
+            --run-hosted "$archive"

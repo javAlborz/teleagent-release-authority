@@ -1,0 +1,64 @@
+name: Teleagent patched production package install diagnostic only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-patched-production-install-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: clean-production-install-native-import-and-audit-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Require exact hosted diagnostic branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read exact patched app source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/teleagent
+          ref: 4279253269c71acfda20916707d26b4e51591c16
+          persist-credentials: false
+          path: app
+      - name: Install Node 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Clean production install and import native modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C app rev-parse HEAD)" = 4279253269c71acfda20916707d26b4e51591c16
+          test "$(git -C app show -s --format=%T HEAD)" = 4cee03901bd9d63e76df086e54e1ba490b98cf68
+          for package in voice-app claude-api-server; do
+            (
+              cd "app/$package"
+              npm ci --omit=dev --no-audit --no-fund
+              node -e 'const assert=require("node:assert/strict");const DB=require("better-sqlite3");const db=new DB(":memory:");db.exec("create table smoke(n integer)");db.close();assert.equal(require("qs/package.json").version,"6.16.0");console.log("PRODUCTION_NATIVE_AND_QS_OK")'
+              if test "$package" = claude-api-server; then
+                node -e 'const pty=require("node-pty");if(typeof pty.spawn!=="function")process.exit(1);console.log("PRODUCTION_PTY_IMPORT_OK")'
+              fi
+              npm audit --omit=dev --audit-level=low --json > "$RUNNER_TEMP/$package-audit.json"
+              python3 -I - "$RUNNER_TEMP/$package-audit.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          audit = json.loads(Path(sys.argv[1]).read_bytes())
+          assert audit['metadata']['vulnerabilities']['total'] == 0
+          print('Production audit has zero reported vulnerabilities:', sys.argv[1])
+          PY
+            )
+          done
+          test -z "$(git -C app status --porcelain --untracked-files=no)"
+          echo 'Clean production installs, native imports and audits passed; no release or installation authority was granted.'

@@ -1,0 +1,60 @@
+name: Teleagent current app unsigned private/public voice image subject comparison only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-private-public-voice-subject-comparison.yml
+      - scripts/compare-private-public-voice-subjects.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    name: compare-all-image-blobs-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Require exact hosted authority branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Bind checked-out comparison source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+      - name: Download exact one-day unsigned archives
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-private-voice" \
+            "$RUNNER_TEMP/teleagent-public-voice"
+          gh run download 35991961338 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-private-voice-image-current-app-diagnostic \
+            --dir "$RUNNER_TEMP/teleagent-private-voice"
+          gh run download 35992034723 --repo javAlborz/teleagent-release-authority \
+            --name unsigned-voice-image-current-app-diagnostic \
+            --dir "$RUNNER_TEMP/teleagent-public-voice"
+      - name: Rehash all blobs and compare exact image subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I scripts/compare-private-public-voice-subjects.py \
+            "$RUNNER_TEMP/teleagent-private-voice/voice-image.docker.tar" \
+            "$RUNNER_TEMP/teleagent-public-voice/teleagent-voice-image-diagnostic.docker.tar"
+          echo 'Image subjects match; the unsigned archive envelopes carry different RepoTags.'

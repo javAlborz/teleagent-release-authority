@@ -1,9 +1,38 @@
 # Teleagent release authority
 
 This public repository is the selected home for independent Teleagent release
-verification and signing. **It is not operational.** There is no build,
-comparison, attestation, signing, or deployment workflow here yet. Nothing in
-this repository currently authorizes a release or a phone deployment.
+verification and signing. **Release authority is not operational.** Hosted
+diagnostics have independently rebuilt and compared unsigned native
+dependencies, a voice image, and a complete release bundle. A separate scan
+reported no vulnerabilities in the fixed unsigned voice image with a fresh
+database at scan time. Separate signer and consuming-verifier diagnostics proved
+GitHub OIDC attestation plumbing for the image and bundle. A private offline
+voice-image build also passed on a disposable hosted runner; a separate job
+rehash-verified that its image manifest, config, and all nine layers match the
+scanned public image. These results are evidence for review, not acceptance of
+the inputs, scanner policy, signer identity, release decision, or host runtime.
+All retained artifacts are short-lived diagnostics. Nothing in this repository
+currently authorizes a release or phone deployment.
+
+The current Codex-only app candidate is
+`5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb`. Fresh private and public
+voice-image builds matched across their complete image subjects; a current
+scan reported zero findings; two SBOMs and two complete unsigned release
+bundles matched. Separate diagnostic signer/consumer jobs passed for the image
+and bundle, and a disposable host fixture accepted the exact bundle after the
+independent controller-unit pin was refreshed. The bundle SHA-256 is
+`35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b`.
+These checks still report `releaseApproved=false`; the authority does not
+publish a deployable release or install anything on Hermes.
+
+The current infrastructure source integrated the dormant recovery start fence
+at `d124326843047afc656b3df49e94eab661bfcf7e`. A new independent
+host-contract diagnostic on the unchanged unsigned bundle passed in
+[run 35997927052](https://github.com/javAlborz/teleagent-release-authority/actions/runs/35997927052),
+using the recovery-fenced verifier policy SHA-256
+`a9b235ee3e45884d36a1bf4f9d0f292f65ad4bad6a04add2d0d25ee9588a6807`.
+Its approval and runtime gate were synthetic fixtures; no shared-host release
+decision or installation followed.
 
 The initial [release policy](POLICY.md) is a review draft. The public `main`
 branch requires a pull request, including for administrators, and has linear

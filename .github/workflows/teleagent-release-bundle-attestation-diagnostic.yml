@@ -1,0 +1,203 @@
+name: Teleagent current app unsigned release bundle attestation diagnostic only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-release-bundle-attestation-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: bind-two-identical-unsigned-bundles-no-release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require exact hosted source and completed comparison
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35992749716" \
+            --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
+            | { read -r status conclusion head branch
+                test "$status" = completed
+                test "$conclusion" = success
+                test "$head" = f90ae9da2527d1e46b79e18a15b4eb28601e7add
+                test "$branch" = feat/hosted-capacity-probe-20260923
+              }
+      - name: Read and compare complete unsigned bundle candidates
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 4194304
+          for replica in 1 2; do
+            mkdir -m 0700 "$RUNNER_TEMP/unsigned-$replica"
+            gh run download 35992749716 --repo "$GITHUB_REPOSITORY" \
+              --name "unsigned-release-bundle-$replica" \
+              --dir "$RUNNER_TEMP/unsigned-$replica"
+            bundle="$RUNNER_TEMP/unsigned-$replica/teleagent-release.diagnostic.tar"
+            test "$(stat -c %s "$bundle")" = 840222720
+            printf '%s  %s\n' \
+              35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b \
+              "$bundle" | sha256sum --check --status
+          done
+          cmp --silent "$RUNNER_TEMP/unsigned-1/teleagent-release.diagnostic.tar" \
+            "$RUNNER_TEMP/unsigned-2/teleagent-release.diagnostic.tar"
+          cmp --silent "$RUNNER_TEMP/unsigned-1/summary.json" \
+            "$RUNNER_TEMP/unsigned-2/summary.json"
+          python3 -I - "$RUNNER_TEMP/unsigned-1/summary.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          summary = json.loads(Path(sys.argv[1]).read_bytes())
+          assert summary['schema'] == 'teleagent.release-bundle-diagnostic.v1'
+          assert summary['applicationRevision'] == '5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb'
+          assert summary['bundleSha256'] == '35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b'
+          assert summary['releaseManifestSha256'] == 'd47f125bd00fbb0f888f49c0f7e285e9940595bc0fb79bd67b43d632b46320da'
+          assert summary['scanApproved'] is False
+          assert summary['signatureVerified'] is False
+          assert summary['releaseApproved'] is False
+          assert summary['installed'] is False
+          PY
+      - name: Pass only the matched archive to a separate diagnostic signer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-unsigned-release-bundle-for-attestation-diagnostic
+          path: ${{ runner.temp }}/unsigned-1/teleagent-release.diagnostic.tar
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  sign:
+    name: attest-unsigned-bundle-on-separate-hosted-signer-no-release
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Require separate hosted signer identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read only the matched unsigned bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-unsigned-release-bundle-for-attestation-diagnostic
+          path: ${{ runner.temp }}/unsigned-bundle
+      - name: Bind archive bytes before attesting
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' \
+            35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b \
+            "$RUNNER_TEMP/unsigned-bundle/teleagent-release.diagnostic.tar" \
+            | sha256sum --check --status
+      - name: Attest only the diagnostic archive
+        id: attest
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: ${{ runner.temp }}/unsigned-bundle/teleagent-release.diagnostic.tar
+      - name: Retain only the diagnostic Sigstore bundle
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/attestation"
+          test -s "$ATTESTATION_BUNDLE"
+          cp -- "$ATTESTATION_BUNDLE" "$RUNNER_TEMP/attestation/bundle.json"
+      - name: Pass the attestation to a separate consuming verifier
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-unsigned-release-bundle-attestation-diagnostic
+          path: ${{ runner.temp }}/attestation/bundle.json
+          if-no-files-found: error
+          retention-days: 1
+
+  verify:
+    name: verify-unsigned-bundle-attestation-on-separate-host-no-release
+    needs: sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Require separate hosted verifier identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read matched bundle and diagnostic attestation
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-unsigned-release-bundle-for-attestation-diagnostic
+          path: ${{ runner.temp }}/unsigned-bundle
+      - name: Read diagnostic attestation bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-unsigned-release-bundle-attestation-diagnostic
+          path: ${{ runner.temp }}/attestation
+      - name: Verify exact subject and certified signer identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/unsigned-bundle/teleagent-release.diagnostic.tar"
+          printf '%s  %s\n' \
+            35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b \
+            "$archive" | sha256sum --check --status
+          gh attestation verify "$archive" \
+            --bundle "$RUNNER_TEMP/attestation/bundle.json" \
+            --repo javAlborz/teleagent-release-authority \
+            --signer-workflow javAlborz/teleagent-release-authority/.github/workflows/teleagent-release-bundle-attestation-diagnostic.yml \
+            --signer-digest "$GITHUB_SHA" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref refs/heads/feat/hosted-capacity-probe-20260923 \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --predicate-type https://slsa.dev/provenance/v1 \
+            --format json > "$RUNNER_TEMP/verified.json"
+          python3 -I - "$RUNNER_TEMP/verified.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          assert 0 < path.stat().st_size <= 1024 * 1024
+          records = json.loads(path.read_bytes())
+          assert type(records) is list and len(records) == 1
+          result = records[0]['verificationResult']
+          statement = result['statement']
+          assert statement['predicateType'] == 'https://slsa.dev/provenance/v1'
+          assert type(statement['subject']) is list and len(statement['subject']) == 1
+          assert statement['subject'][0]['digest'] == {
+              'sha256': '35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b'}
+          assert type(result['signature']['certificate']) is dict
+          print({'schema': 'teleagent.unsigned-bundle-attestation-diagnostic.v1',
+                 'diagnosticBundleAttestationVerified': True,
+                 'scanApproved': False, 'releaseApproved': False, 'installed': False})
+          PY

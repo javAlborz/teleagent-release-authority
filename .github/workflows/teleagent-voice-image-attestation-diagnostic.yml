@@ -1,0 +1,190 @@
+name: Teleagent current app unsigned voice image attestation diagnostic only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-voice-image-attestation-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: bind-matched-unsigned-image-no-release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require exact hosted authority and completed diagnostic evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          for row in \
+            '35991961338 abc0513ad4d4a47c19f9292b9b5d9e59ab6af4db' \
+            '35992034723 4faf67a03d87d1a6598790d4f690aceaf39df432' \
+            '35992359796 e0de0feccb93b86e86c8d304efe781ba9c3be69a' \
+            '35992468711 b7a130c9452a06c31d62541203bea101b22b4445'; do
+            read -r run_id head <<< "$row"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+              --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
+              | { read -r status conclusion observed branch
+                  test "$status" = completed
+                  test "$conclusion" = success
+                  test "$observed" = "$head"
+                  test "$branch" = feat/hosted-capacity-probe-20260923
+                }
+          done
+      - name: Retrieve one exact unsigned image as data
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-unsigned-voice-image"
+          gh run download 35992034723 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-voice-image-current-app-diagnostic \
+            --dir "$RUNNER_TEMP/teleagent-unsigned-voice-image"
+          test "$(find "$RUNNER_TEMP/teleagent-unsigned-voice-image" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 1
+          printf '%s  %s\n' \
+            ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220 \
+            "$RUNNER_TEMP/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar" \
+            | sha256sum --check --status
+      - name: Pass only exact unsigned archive bytes to a separate signer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-unsigned-voice-image-for-attestation-diagnostic
+          path: ${{ runner.temp }}/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  sign:
+    name: attest-unsigned-image-on-separate-hosted-signer-no-release
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Require exact separate hosted signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read only the matched unsigned image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-unsigned-voice-image-for-attestation-diagnostic
+          path: ${{ runner.temp }}/teleagent-unsigned-voice-image
+      - name: Bind image bytes before attesting
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' \
+            ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220 \
+            "$RUNNER_TEMP/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar" \
+            | sha256sum --check --status
+      - name: Attest only the diagnostic archive
+        id: attest
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: ${{ runner.temp }}/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar
+      - name: Retain only the diagnostic Sigstore bundle
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-unsigned-image-bundle"
+          test -f "$ATTESTATION_BUNDLE"
+          cp -- "$ATTESTATION_BUNDLE" "$RUNNER_TEMP/teleagent-unsigned-image-bundle/bundle.json"
+          test -s "$RUNNER_TEMP/teleagent-unsigned-image-bundle/bundle.json"
+      - name: Pass only the bundle to a consuming verifier
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-unsigned-voice-image-attestation-diagnostic-bundle
+          path: ${{ runner.temp }}/teleagent-unsigned-image-bundle/bundle.json
+          if-no-files-found: error
+          retention-days: 1
+
+  verify:
+    name: verify-unsigned-image-attestation-on-separate-host-no-release
+    needs: sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Require exact separate hosted verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+      - name: Read the unsigned diagnostic archive
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-unsigned-voice-image-for-attestation-diagnostic
+          path: ${{ runner.temp }}/teleagent-unsigned-voice-image
+      - name: Read the diagnostic attestation bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: teleagent-unsigned-voice-image-attestation-diagnostic-bundle
+          path: ${{ runner.temp }}/teleagent-unsigned-image-bundle
+      - name: Verify exact image digest and certified signer identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar"
+          printf '%s  %s\n' \
+            ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220 \
+            "$archive" | sha256sum --check --status
+          gh attestation verify "$archive" \
+            --bundle "$RUNNER_TEMP/teleagent-unsigned-image-bundle/bundle.json" \
+            --repo javAlborz/teleagent-release-authority \
+            --signer-workflow javAlborz/teleagent-release-authority/.github/workflows/teleagent-voice-image-attestation-diagnostic.yml \
+            --signer-digest "$GITHUB_SHA" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref refs/heads/feat/hosted-capacity-probe-20260923 \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --predicate-type https://slsa.dev/provenance/v1 \
+            --format json > "$RUNNER_TEMP/teleagent-unsigned-image-verified.json"
+          python3 -I - "$RUNNER_TEMP/teleagent-unsigned-image-verified.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          assert 0 < path.stat().st_size <= 1024 * 1024
+          records = json.loads(path.read_bytes())
+          assert type(records) is list and len(records) == 1
+          result = records[0]['verificationResult']
+          statement = result['statement']
+          assert statement['predicateType'] == 'https://slsa.dev/provenance/v1'
+          assert type(statement['subject']) is list and len(statement['subject']) == 1
+          assert statement['subject'][0]['digest'] == {
+              'sha256': 'ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220'}
+          assert type(result['signature']['certificate']) is dict
+          print({'schema': 'teleagent.unsigned-image-attestation-diagnostic.v1',
+                 'diagnosticImageVerified': True, 'scanApproved': False,
+                 'releaseApproved': False, 'installed': False})
+          PY

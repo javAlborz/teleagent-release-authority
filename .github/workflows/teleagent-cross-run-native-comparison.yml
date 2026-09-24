@@ -1,0 +1,112 @@
+name: Teleagent unsigned native cross-run comparison only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-cross-run-native-comparison.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    name: compare-exact-successful-native-job-artifacts-no-release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Require exact hosted authority branch and source jobs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35932701529" \
+            --jq '[.status,.conclusion,.head_sha,.head_branch,.event] | @tsv' \
+            | { read -r status conclusion head branch event
+                test "$status" = completed
+                test "$conclusion" = failure
+                test "$head" = 0de5654bbb4dfcec8ce7672bbf8055581dae4576
+                test "$branch" = feat/hosted-capacity-probe-20260923
+                test "$event" = workflow_dispatch
+              }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35935470213" \
+            --jq '[.status,.conclusion,.head_sha,.head_branch,.event] | @tsv' \
+            | { read -r status conclusion head branch event
+                test "$status" = completed
+                test "$conclusion" = success
+                test "$head" = 197be7276c00fb9d1eb89b4739eec6dcec9e6b14
+                test "$branch" = feat/hosted-capacity-probe-20260923
+                test "$event" = workflow_dispatch
+              }
+          for pair in \
+            '35932701529 unsigned-glibc-2' \
+            '35932701529 unsigned-musl-1' \
+            '35935470213 unsigned-glibc-retry' \
+            '35935470213 unsigned-musl-retry'; do
+            read -r run_id job_name <<< "$pair"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name == "'"$job_name"'") | .conclusion] | @tsv' \
+              | { read -r conclusion
+                  test "$conclusion" = success
+                }
+          done
+      - name: Read exact comparator source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Bind comparator revision and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain)"
+      - name: Download four explicit one-day unsigned artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-compare-observations" \
+            "$RUNNER_TEMP/teleagent-compare-tars" \
+            "$RUNNER_TEMP/teleagent-compare-downloads"
+          for mapping in \
+            '35932701529 glibc-2 glibc-1' \
+            '35932701529 musl-1 musl-1' \
+            '35935470213 glibc-retry glibc-2' \
+            '35935470213 musl-retry musl-2'; do
+            read -r run_id source target <<< "$mapping"
+            for kind in observation candidate; do
+              case "$kind" in
+                observation) name="unsigned-observation-$source"; extension=json ;;
+                candidate) name="unsigned-native-candidate-$source"; extension=tar ;;
+              esac
+              directory="$RUNNER_TEMP/teleagent-compare-downloads/$run_id-$source-$kind"
+              mkdir -m 0700 "$directory"
+              gh run download "$run_id" --repo "$GITHUB_REPOSITORY" \
+                --name "$name" --dir "$directory"
+              test "$(find "$directory" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 1
+              test -f "$directory/$source.$extension"
+              case "$kind" in
+                observation) destination="$RUNNER_TEMP/teleagent-compare-observations/$target.json" ;;
+                candidate) destination="$RUNNER_TEMP/teleagent-compare-tars/$target.tar" ;;
+              esac
+              install -m 0400 "$directory/$source.$extension" "$destination"
+            done
+          done
+      - name: Reconstruct and compare both libc dependency subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I scripts/compare-retained-native-candidates.py \
+            --observations "$RUNNER_TEMP/teleagent-compare-observations" \
+            --tars "$RUNNER_TEMP/teleagent-compare-tars" \
+            --plan-sha256 877bf9b1e00cbf627d322a6f3ec6f9a7fb1fa9f47f0aab843e4407536d6dc904
+          echo 'Cross-run unsigned dependency comparison passed; no release or install authority was granted.'

@@ -3,7 +3,7 @@ name: Teleagent current app unsigned release bundle closure diagnostic only
 on:
   push:
     branches:
-      - feat/hosted-capacity-probe-20260923
+      - fix/teleagent-v3-gate-release
     paths:
       - .github/workflows/teleagent-release-bundle-diagnostic.yml
       - scripts/assemble-release-bundle-diagnostic.py
@@ -38,23 +38,24 @@ jobs:
           set -euo pipefail
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
-          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          test "${GITHUB_REF:-}" = refs/heads/fix/teleagent-v3-gate-release
           test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 20971520
           for row in \
-            '35935470213 197be7276c00fb9d1eb89b4739eec6dcec9e6b14' \
-            '35936132628 135fff99bd109d43f58bbb4778df1c022afff746' \
-            '35992359796 e0de0feccb93b86e86c8d304efe781ba9c3be69a' \
-            '35992468711 b7a130c9452a06c31d62541203bea101b22b4445' \
-            '35992626604 7c31d1bae491e7e6d126b8a962df62ede74d7027' \
-            '35992525759 e6bdb1ad55706ab70ae002cef62e296e39f304c7'; do
-            read -r run_id head <<< "$row"
+            '35935470213 197be7276c00fb9d1eb89b4739eec6dcec9e6b14 feat/hosted-capacity-probe-20260923' \
+            '35936132628 135fff99bd109d43f58bbb4778df1c022afff746 feat/hosted-capacity-probe-20260923' \
+            '36040835605 71ab465a43025af8266f9b00903c61cc3e0d9aba fix/teleagent-v3-gate-release' \
+            '36041234613 68e876d6589e543162123f48fac00286e8a13403 fix/teleagent-v3-gate-release' \
+            '36041611475 6333a7276eb3c57ac2b913b6b597befa81499ffa fix/teleagent-v3-gate-release' \
+            '36041325195 1841ff26a897e920fcd705ecb695845159ae885c fix/teleagent-v3-gate-release' \
+            '36041367429 1841ff26a897e920fcd705ecb695845159ae885c fix/teleagent-v3-gate-release'; do
+            read -r run_id head expected_branch <<< "$row"
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
               --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
               | { read -r status conclusion observed branch
                   test "$status" = completed
                   test "$conclusion" = success
                   test "$observed" = "$head"
-                  test "$branch" = feat/hosted-capacity-probe-20260923
+                  test "$branch" = "$expected_branch"
                 }
           done
       - name: Read exact authority source
@@ -66,7 +67,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
+          ref: fd254f37a3017ad3475449987197706bbdbe7be7
           persist-credentials: false
           path: app
       - name: Bind checked-out source identities
@@ -74,8 +75,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C app rev-parse HEAD)" = 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
-          test "$(git -C app show -s --format=%T HEAD)" = 3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b
+          test "$(git -C app rev-parse HEAD)" = fd254f37a3017ad3475449987197706bbdbe7be7
+          test "$(git -C app show -s --format=%T HEAD)" = 7f605327107588728ae1a96cabe3977ecf707156
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C app status --porcelain)"
       - name: Acquire fixed public provider and tool inputs as data
@@ -98,10 +99,10 @@ jobs:
           gh run download 35935470213 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-observation-glibc-retry \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 35992034723 --repo "$GITHUB_REPOSITORY" \
+          gh run download 36040835605 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-voice-image-current-app-diagnostic \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 35992525759 --repo "$GITHUB_REPOSITORY" \
+          gh run download 36041367429 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-voice-sbom-1 \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
           test "$(find "$RUNNER_TEMP/teleagent-release-inputs" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 4

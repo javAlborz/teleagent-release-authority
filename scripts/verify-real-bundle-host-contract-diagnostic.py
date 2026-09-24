@@ -106,13 +106,16 @@ def run(bundle, verifier_source):
          'private verifier self-identity differs')
     tree = ast.parse(raw, filename=str(verifier_source))
     policy = None
+    targets = None
     for statement in tree.body:
-        if isinstance(statement, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == 'HOST_APPROVED_SYSTEMD_UNIT_SHA256'
-            for target in statement.targets
-        ):
-            policy = ast.literal_eval(statement.value)
-    need(type(policy) is dict and len(policy) == 19,
+        if isinstance(statement, ast.Assign):
+            for target in statement.targets:
+                if isinstance(target, ast.Name) and target.id == 'HOST_APPROVED_SYSTEMD_UNIT_SHA256':
+                    policy = ast.literal_eval(statement.value)
+                if isinstance(target, ast.Name) and target.id == 'HOST_APPROVED_SYSTEMD_UNIT_TARGETS':
+                    targets = ast.literal_eval(statement.value)
+    need(type(policy) is dict and len(policy) == 19 and
+         type(targets) is dict and set(targets) == set(policy),
          'private systemd unit policy is absent or incomplete')
     with tempfile.TemporaryDirectory(prefix='teleagent-staging-handoff-test-real-', dir='/tmp') as name:
         root = Path(name)
@@ -171,11 +174,43 @@ def run(bundle, verifier_source):
              result.stdout == b'TELEAGENT_RELEASE_VERIFIED\n',
              'private host verifier refused exact bundle: ' +
              result.stderr.decode('utf-8', 'replace')[-1000:])
+        node_source = release / manifest['hostRuntime']['nodePath']
+        for absolute in manifest['hostRuntime']['interpreterTargets']:
+            need(absolute in ('/opt/teleagent/node/bin/node', '/usr/local/libexec/teleagent-node'),
+                 'host interpreter target differs')
+            destination = root / absolute.removeprefix('/')
+            make_dir(destination.parent)
+            shutil.copyfile(node_source, destination)
+            destination.chmod(0o555)
+        for relative, absolute in targets.items():
+            need(type(absolute) is str and absolute.startswith('/etc/systemd/system/'),
+                 'installed systemd target differs')
+            source = release / relative
+            need(sha(source) == policy[relative],
+                 'release unit differs from infrastructure pin')
+            destination = root / absolute.removeprefix('/')
+            make_dir(destination.parent)
+            if destination.exists():
+                need(sha(destination) == policy[relative],
+                     'two source units disagree on installed target')
+            else:
+                shutil.copyfile(source, destination)
+                destination.chmod(0o644)
+        for operation, expected in (
+            ('--write-gate', b'TELEAGENT_RELEASE_GATE_WRITTEN\n'),
+            ('--check-runtime', b'TELEAGENT_RELEASE_RUNTIME_OK\n'),
+        ):
+            result = subprocess.run(['/usr/bin/python3', str(real), operation], env=environment,
+                                    stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
+            need(result.returncode == 0 and result.stdout == expected,
+                 'private host verifier refused synthetic runtime check: ' +
+                 result.stderr.decode('utf-8', 'replace')[-1000:])
         return {'schema': 'teleagent.real-bundle-host-contract-diagnostic.v1',
                 'bundleSha256': BUNDLE, 'releaseManifestSha256': MANIFEST,
                 'privateVerifierSourcePolicySha256': VERIFIER,
                 'verifiedInventoryEntries': count,
-                'syntheticApprovalOnly': True, 'releaseApproved': False,
+                'syntheticApprovalOnly': True, 'syntheticRuntimeFilesVerified': True,
+                'releaseApproved': False,
                 'installed': False}
 
 

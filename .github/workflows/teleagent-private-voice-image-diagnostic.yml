@@ -1,6 +1,13 @@
 name: Teleagent private offline voice image diagnostic only
 
 on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-private-voice-image-diagnostic.yml
+      - scripts/hosted-private-voice-image-diagnostic.py
+      - scripts/hosted-native-build-diagnostic.py
   workflow_dispatch:
 
 permissions:

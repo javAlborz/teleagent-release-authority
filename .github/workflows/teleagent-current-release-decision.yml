@@ -3,7 +3,7 @@ name: Teleagent current release decision
 on:
   push:
     branches:
-      - feat/hosted-capacity-probe-20260923
+      - fix/teleagent-v3-gate-release
     paths:
       - .github/workflows/teleagent-current-release-decision.yml
       - scripts/verify-current-release-decision.py
@@ -34,7 +34,7 @@ jobs:
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REPOSITORY_ID:-}" = 1383172221
           case "$GITHUB_REF" in
-            refs/heads/feat/hosted-capacity-probe-20260923|refs/heads/main) ;;
+            refs/heads/fix/teleagent-v3-gate-release|refs/heads/main) ;;
             *) exit 1 ;;
           esac
           test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 5242880

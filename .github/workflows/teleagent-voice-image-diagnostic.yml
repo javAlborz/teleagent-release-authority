@@ -3,7 +3,7 @@ name: Teleagent current app hosted voice image functional diagnostic only
 on:
   push:
     branches:
-      - feat/hosted-capacity-probe-20260923
+      - fix/teleagent-v3-gate-release
     paths:
       - .github/workflows/teleagent-voice-image-diagnostic.yml
       - scripts/extract-verified-musl-dependencies.py
@@ -26,7 +26,7 @@ jobs:
           set -euo pipefail
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
-          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          test "${GITHUB_REF:-}" = refs/heads/fix/teleagent-v3-gate-release
           test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 15728640
       - name: Read exact authority source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 4482c7f19ddf91cadcdf449bb8d1849c14abcf73
+          ref: 4b790d2d40230ecc742c0970dca124bd138ffd32
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
+          ref: fd254f37a3017ad3475449987197706bbdbe7be7
           persist-credentials: false
           path: app
       - name: Bind checked-out inputs and render fixed recipe as data
@@ -55,14 +55,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C infrastructure rev-parse HEAD)" = 4482c7f19ddf91cadcdf449bb8d1849c14abcf73
-          test "$(git -C app rev-parse HEAD)" = 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
-          test "$(git -C app show -s --format=%T HEAD)" = 3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b
+          test "$(git -C infrastructure rev-parse HEAD)" = 4b790d2d40230ecc742c0970dca124bd138ffd32
+          test "$(git -C app rev-parse HEAD)" = fd254f37a3017ad3475449987197706bbdbe7be7
+          test "$(git -C app show -s --format=%T HEAD)" = 7f605327107588728ae1a96cabe3977ecf707156
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C infrastructure status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           printf '%s\n' \
-            '9f7829de408b82cce0625df00d1ab87113a297f92b8669ff949a84a336d27490  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
+            'e551c28b3acc2ab2c098a2efe4931c18f07df6f6406e892ff5b15cb8bc2e4a1e  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
             | sha256sum --check --status
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-recipe"
           python3 -I - "$RUNNER_TEMP/teleagent-voice-recipe" <<'PY'
@@ -143,7 +143,7 @@ jobs:
           docker load --input "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
           test "$(docker image inspect teleagent-voice-diagnostic:20260924 \
             --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
-            5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
+            fd254f37a3017ad3475449987197706bbdbe7be7
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
             --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260924 \

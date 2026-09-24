@@ -18,17 +18,17 @@ import stat
 import tarfile
 
 HERE = Path(__file__).resolve().parent
-APP = '5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb'
-TREE = '3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b'
-BUNDLE_SHA = '35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b'
+APP = 'fd254f37a3017ad3475449987197706bbdbe7be7'
+TREE = '7f605327107588728ae1a96cabe3977ecf707156'
+BUNDLE_SHA = 'fcbc477da5fc456e43f89a92192de414436a394833221fbcd03c85d28af23257'
 BUNDLE_SIZE = 840222720
-MANIFEST_SHA = 'd47f125bd00fbb0f888f49c0f7e285e9940595bc0fb79bd67b43d632b46320da'
-VOICE_SHA = 'ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220'
-VOICE_CONFIG = 'sha256:220c03e14d3bda11322a32f6757d05359bbf300d789d434caf71d15e96ccc39a'
+MANIFEST_SHA = 'ccebcf4df3fa59bfe6e2e00edc6d2badf415528617cd846e2e1001589ce50e22'
+VOICE_SHA = '9098953337ff923718b75c42ae9d3a48a8cb35a69ddbaa52f72f69c295b3526e'
+VOICE_CONFIG = 'sha256:40afbf94961c7501f215fefcc4c77477b75f605f0cc5885d6270a1c50127bab3'
 PROVIDER_MANIFEST = 'sha256:b03031aa3bc6846cb63cf0fa17ae558fb93df9a2fad5b3fe6ce67ee7d24bbf04'
-SCAN_SHA = '7b9b935829c7e9a2a0d50e2db8185f7b52112fc3c2096e859a157bf6a432a5a3'
-SCAN_CHECK_SHA = '488618a30afde62d895a567f3911841a096d5455eb0bc868381b298c70de19e3'
-DB_METADATA_SHA = '6189769c7be637b4250797410f09bacf0c7ecaa6e296e50988c36093cd321b32'
+SCAN_SHA = 'c84493e2c50acf21d732a519fd968b0aed81d07f077a5bf1b2d5d509b0a1e5ec'
+SCAN_CHECK_SHA = '738ecb28d6b108f01556609629fc22f4d962059c562596b730bbdfc7ca6b5a21'
+DB_METADATA_SHA = '28167767923dc5caf4bc37a4948a39453959a37fd7841bd13e3a43d18d5f19e5'
 AUTHORITY_REPO = 'javAlborz/teleagent-release-authority'
 AUTHORITY_REPO_ID = '1383172221'
 WORKFLOW = '.github/workflows/teleagent-current-release-decision.yml'
@@ -44,13 +44,12 @@ INPUT_MANIFESTS = {
 INPUT_SELECTION_SHA = 'bb2a08960b9ef3b6279920a083eea4ba1fc45fe7c9a2e5713bbe12028f3caa59'
 SOURCE_RUNS = {
     'nativeBuild': 35935470213,
-    'publicVoiceImage': 35992034723,
-    'imageComparison': 35992359796,
-    'initialScan': 35992468711,
-    'voiceSbom': 35992525759,
-    'privateImageAttestation': 35992626604,
-    'bundle': 35992749716,
-    'freshScan': 36028598666,
+    'publicVoiceImage': 36040835605,
+    'secondVoiceImage': 36041234613,
+    'imageComparison': 36041611475,
+    'voiceSbom': 36041367429,
+    'bundle': 36041801158,
+    'freshScan': 36041325195,
 }
 
 
@@ -128,7 +127,7 @@ def verify_summary(value):
         'bundleBytes': BUNDLE_SIZE, 'bundleSha256': BUNDLE_SHA,
         'releaseManifestSha256': MANIFEST_SHA,
         'voiceImageTarSha256': VOICE_SHA,
-        'voiceSbomSha256': '6705bf4b3a8baa308719522061e9dc7d1fb62b3aec9fc90891f21af6dab9f349',
+        'voiceSbomSha256': '0c46ff4f44a19affca31239b983c2f1f317d7fc216aa92b4d40df124df6008ed',
         'glibcTarSha256': '3001c2ffb4f6cfda7032ee7a3dda684fcae0991860491be38e205bdf51e5f10a',
         'hostDependencyFiles': 4508, 'sourceEntries': 599,
         'sbomAbsoluteReleasePathsNormalized': 25,

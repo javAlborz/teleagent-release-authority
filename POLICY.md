@@ -1,6 +1,7 @@
-# Teleagent release policy candidate
+# Teleagent release policy
 
-Status: **draft; no accepted signer or promotable release**.
+Status: **the first accepted release was superseded before Hermes selection;
+the corrected candidate awaits a new protected-main decision**.
 
 ## Repository identities
 
@@ -50,60 +51,55 @@ verifier must compare them to current authenticated metadata and bind an exact
    recovery controls, state migration, disabled install and attended handset
    acceptance remain separate gates.
 
-## Current refusal state
+## Current release state
 
-No accepted release decision, deployment workflow, or consuming host trust root
-is installed here. Branch-only diagnostics have produced matching unsigned
-native dependencies, voice images, and complete release bundles on fresh hosted
-runners. A fresh diagnostic vulnerability scan and independent package inventory
-cover the fixed public image. A private offline build produced a byte-identical
-image subject under a different Docker export tag. Separate GitHub OIDC signer
-and consuming-verifier jobs exercised the image and bundle, but their predicates
-explicitly withhold release approval. Input and scanner policy acceptance,
-release signing, host installation, and live phone acceptance remain open. The
-temporary private-infrastructure read key described above is the sole Actions
-environment secret; diagnostic OIDC grants do not convey release authority.
-Keep the live phone locked until an independently verified release and
-installation satisfy every remaining gate.
+Protected-main run `36033577203` signed and independently consumed the first
+exact release. Before Hermes selection, host integration found that its app
+aggregate parsed a version 1 boot gate while the host verifier emits version
+3. That artifact is staged but unselected and cannot complete the disabled
+installation. The application fix is revision
+`fd254f37a3017ad3475449987197706bbdbe7be7`.
+
+The corrected candidate has two fresh, separate hosted voice image builds with
+identical complete archives and image blobs, two fresh matching complete
+release builds, a matching normalized SBOM, and a fresh zero-finding scan.
+The older private offline voice build covered the previous app revision; its
+expired pinned database prevented a new private diagnostic before execution.
+The current decision relies on the two fresh hosted image and complete release
+replicas. It makes no claim that the corrected image was compared to a new
+private offline build. Protected-main signing, independent consumption, Hermes
+approval pinning, disabled installation and live phone acceptance are still
+required. The live phone remains locked until those gates pass.
 
 ## Current candidate selection, September 24
 
-The current candidate is application revision
-`5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb` and complete bundle
-SHA-256 `35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b`.
-The authority's current decision source selects the exact checked-in
-`apk.json`, `engine.json`, `indexes.json`, patched source-pair, and `tools.json`
-input manifests by full SHA-256; their canonical selection digest is
+The corrected candidate is application revision
+`fd254f37a3017ad3475449987197706bbdbe7be7` and complete bundle
+SHA-256 `fcbc477da5fc456e43f89a92192de414436a394833221fbcd03c85d28af23257`.
+The authority selects the exact checked-in `apk.json`, `engine.json`,
+`indexes.json`, patched source-pair, and `tools.json` input manifests by full
+SHA-256. Their canonical selection digest remains
 `bb2a08960b9ef3b6279920a083eea4ba1fc45fe7c9a2e5713bbe12028f3caa59`.
-The older `trivy.json` is excluded from that build selection because its
-database has expired. The current scan is bound separately to run
-`36028598666`, its exact report and database metadata, and its
-2026-09-25 13:23:01 UTC database expiry.
+The older `trivy.json` is excluded because its database expired. The current
+scan is bound separately to run `36041325195`, its exact report and metadata,
+and its 2026-09-25 13:23:01 UTC database expiry.
 
-Successful hosted branch run `36032028804` compared both complete bundle
-replicas, checked the release manifest and current scanner report, and
-produced a decision with `scanApproved=false` and `releaseApproved=false`.
-Its signing and consuming jobs were skipped. The source also checks eight
-exact successful hosted run IDs, revisions, workflow paths, events and first
-attempts before fetching artifacts. Those earlier jobs include isolated native
-builds, public and private voice-image construction, image comparison, SBOM,
-two independent bundle assemblies, and fresh scan. A successful run result
-proves those diagnostic checks ran, but does not retroactively make their
-diagnostic labels into approval.
+Hosted run `36041611475` compared the two corrected image archives and every
+image blob. Run `36041801158` compared the two complete release bundles,
+including their bound summaries. The decision source checks exact successful
+hosted run IDs, revisions, workflow paths, events and first attempts before
+fetching artifacts. A successful diagnostic run does not itself grant release
+approval.
 
 For this single-user release, the owner policy selects the digest-pinned
 BuildKit asset from the upstream GitHub release and the fresh Trivy database
-from its pinned official container repository digest as roots. Their
-acquisition manifests report `signatureVerified=false`; this decision makes
-the transport/origin and full digest the trust boundary and does not claim
-upstream signature verification. The APK indexes and packages have separately
-verified Alpine signatures. The bundle still needs the protected-main signer,
-independent consuming verifier, and Hermes host profile before installation.
-The proposed v2 host approval carries the authority repository ID and main
-revision, signed decision digest, selected input digest, and scan database
-expiry alongside the exact bundle and release IDs. The Hermes host verifier
-must pin this accepted authority decision and reject a copied or edited
-approval before the release can be installed or started.
+from its official container repository as roots. Their acquisition manifests
+report `signatureVerified=false`; this decision makes transport/origin and
+full digest the trust boundary and does not claim upstream signature
+verification. The APK indexes and packages have separately verified Alpine
+signatures. The corrected bundle still needs the protected-main signer,
+independent consuming verifier, and updated Hermes host profile before
+installation.
 
 ## Solo-owner source governance
 

@@ -8,6 +8,12 @@ on:
       - .github/workflows/teleagent-release-bundle-diagnostic.yml
       - scripts/assemble-release-bundle-diagnostic.py
   workflow_dispatch:
+    inputs:
+      diagnose_one:
+        description: Run one assembly while investigating a contract failure
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -22,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        replica: ['1', '2']
+        replica: ${{ fromJSON(inputs.diagnose_one == true && '["1"]' || '["1","2"]') }}
     steps:
       - name: Require exact hosted source and completed input evidence
         shell: bash
@@ -130,6 +136,7 @@ jobs:
 
   compare:
     name: compare-two-unsigned-release-closures-no-release
+    if: inputs.diagnose_one != true
     needs: assemble
     runs-on: ubuntu-24.04
     timeout-minutes: 20

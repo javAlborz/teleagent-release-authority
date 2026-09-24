@@ -258,6 +258,24 @@ def build(args):
          len(result.stderr) <= 65536,
          'host release SBOM scan refused: ' +
          result.stderr.decode('utf-8', 'replace')[-2048:])
+    raw_document = json.loads(raw.read_bytes())
+    path_fields = []
+    def inspect_paths(value, prefix=''):
+        if len(path_fields) >= 12:
+            return
+        if isinstance(value, str) and str(work) in value:
+            path_fields.append({'field': prefix,
+                                'value': value.replace(str(work), '<work>')[:160]})
+        elif isinstance(value, dict):
+            for key, child in value.items():
+                inspect_paths(child, prefix + '/' + str(key))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                inspect_paths(child, prefix + '/' + str(index))
+    inspect_paths(raw_document)
+    if path_fields:
+        print(json.dumps({'diagnosticEphemeralSbomFields': path_fields}, sort_keys=True),
+              file=sys.stderr)
     command(['python3', '-E', '-s', str(support), 'normalize-sbom',
              '--source', str(raw),
              '--destination', str(release / 'artifacts/sbom/teleagent-release.cdx.json'),

@@ -6,13 +6,13 @@ Only the fixture is written; no application or provider executable is started.
 """
 
 import argparse
+import ast
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import shutil
-import stat
 import subprocess
 import tarfile
 import tempfile
@@ -104,6 +104,16 @@ def run(bundle, verifier_source):
     need(raw.count(marker) == 1 and raw[index:index + 64].decode() == VERIFIER and
          hashlib.sha256(raw[:index] + b'0' * 64 + raw[index + 64:]).hexdigest() == VERIFIER,
          'private verifier self-identity differs')
+    tree = ast.parse(raw, filename=str(verifier_source))
+    policy = None
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == 'HOST_APPROVED_SYSTEMD_UNIT_SHA256'
+            for target in statement.targets
+        ):
+            policy = ast.literal_eval(statement.value)
+    need(type(policy) is dict and len(policy) == 19,
+         'private systemd unit policy is absent or incomplete')
     with tempfile.TemporaryDirectory(prefix='teleagent-staging-handoff-test-real-', dir='/tmp') as name:
         root = Path(name)
         root.chmod(0o700)
@@ -135,6 +145,10 @@ def run(bundle, verifier_source):
         approval_path = root / 'etc/teleagent/release-approval.json'
         approval_path.write_bytes((json.dumps(approval, separators=(',', ':'), ensure_ascii=True) + '\n').encode('ascii'))
         approval_path.chmod(0o444)
+        policy_path = root / 'etc/teleagent/test-host-approved-systemd-unit-sha256.json'
+        policy_path.write_bytes((json.dumps({'version': 1, 'sha256': policy},
+                                            separators=(',', ':'), ensure_ascii=True) + '\n').encode('ascii'))
+        policy_path.chmod(0o444)
         installed = root / 'usr/local/libexec/verify-teleagent-release-closure'
         real = installed.with_name(installed.name + '.real')
         installed.write_bytes(raw)

@@ -84,7 +84,7 @@ def stage_app(root, destination):
         target = destination / path
         target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
         target.write_bytes(data)
-        target.chmod(0o444)
+        target.chmod(0o644)
     need('voice-app/package.json' in seen and 'voice-app/index.js' in seen,
          'voice source entrypoints absent')
     destination.chmod(0o755)
@@ -121,7 +121,10 @@ def stage_dependencies(source, destination):
                 target.chmod(0o555 if info.st_mode & 0o111 else 0o444)
     need((destination / 'voice-app/node_modules').is_dir() and files > 100,
          'verified voice dependencies absent')
-    destination.chmod(0o755)
+    for parent, directories, _ in os.walk(destination, topdown=False, followlinks=False):
+        for name in directories:
+            (Path(parent) / name).chmod(0o555)
+    destination.chmod(0o555)
     return {'files': files, 'bytes': total}
 
 

@@ -183,7 +183,7 @@ jobs:
           release="$RUNNER_TEMP/teleagent-consumed-release"
           test "$(find "$release" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 3
           printf '%s  %s\n' \
-            '35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b' \
+            'fcbc477da5fc456e43f89a92192de414436a394833221fbcd03c85d28af23257' \
             "$release/teleagent-release.tar" | sha256sum --check --status
           gh attestation verify "$release/teleagent-release.tar" \
             --bundle "$release/attestation.json" \

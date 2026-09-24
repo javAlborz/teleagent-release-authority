@@ -14,6 +14,17 @@ the inputs, scanner policy, signer identity, release decision, or host runtime.
 All retained artifacts are short-lived diagnostics. Nothing in this repository
 currently authorizes a release or phone deployment.
 
+The current Codex-only app candidate is
+`5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb`. Fresh private and public
+voice-image builds matched across their complete image subjects; a current
+scan reported zero findings; two SBOMs and two complete unsigned release
+bundles matched. Separate diagnostic signer/consumer jobs passed for the image
+and bundle, and a disposable host fixture accepted the exact bundle after the
+independent controller-unit pin was refreshed. The bundle SHA-256 is
+`35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b`.
+These checks still report `releaseApproved=false`; the authority does not
+publish a deployable release or install anything on Hermes.
+
 The initial [release policy](POLICY.md) is a review draft. The public `main`
 branch requires a pull request, including for administrators, and has linear
 history; force pushes and deletion are disabled. This is a solo-owner

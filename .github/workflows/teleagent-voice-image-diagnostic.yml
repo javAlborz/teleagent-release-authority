@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 16358f4ed64fd6207edeb53be0f87846661b4d04
+          ref: 38784c787c353033a82a480611be874e4e123002
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 4279253269c71acfda20916707d26b4e51591c16
+          ref: fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
           persist-credentials: false
           path: app
       - name: Bind checked-out inputs and render fixed recipe as data
@@ -55,14 +55,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C infrastructure rev-parse HEAD)" = 16358f4ed64fd6207edeb53be0f87846661b4d04
-          test "$(git -C app rev-parse HEAD)" = 4279253269c71acfda20916707d26b4e51591c16
-          test "$(git -C app show -s --format=%T HEAD)" = 4cee03901bd9d63e76df086e54e1ba490b98cf68
+          test "$(git -C infrastructure rev-parse HEAD)" = 38784c787c353033a82a480611be874e4e123002
+          test "$(git -C app rev-parse HEAD)" = fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
+          test "$(git -C app show -s --format=%T HEAD)" = 9729bffab57c1c45325f143de61d44cfa9d267ce
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C infrastructure status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           printf '%s\n' \
-            '6e770c87d6daca47338f0ecb754a8ccef660e6bc75944010f04869283512e551  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
+            '046a0f91e33954dd0d7adf36dee41165d0c6425fc0f8ab1ff780128ce59d2a58  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
             | sha256sum --check --status
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-recipe"
           python3 -I - "$RUNNER_TEMP/teleagent-voice-recipe" <<'PY'
@@ -125,13 +125,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export SOURCE_DATE_EPOCH=1790204008
+          export SOURCE_DATE_EPOCH=1790210096
           docker buildx create --name teleagent-voice-diag --driver docker-container \
             --driver-opt image=moby/buildkit@sha256:a461e7f0ce921972028acfbed628d45663d83e67ac1230722c2b34cf72760a0d \
             --bootstrap
           docker buildx build --builder teleagent-voice-diag \
             --platform linux/amd64 --no-cache --network none \
-            --build-arg SOURCE_DATE_EPOCH=1790204008 \
+            --build-arg SOURCE_DATE_EPOCH=1790210096 \
             --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
             --build-context app="$GITHUB_WORKSPACE/app" \
             --build-context dependencies="$RUNNER_TEMP/teleagent-musl-dependencies" \
@@ -143,7 +143,7 @@ jobs:
           docker load --input "$RUNNER_TEMP/teleagent-voice-image-diagnostic.docker.tar"
           test "$(docker image inspect teleagent-voice-diagnostic:20260923 \
             --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
-            4279253269c71acfda20916707d26b4e51591c16
+            fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
             --user 10001:10001 --entrypoint node teleagent-voice-diagnostic:20260923 \

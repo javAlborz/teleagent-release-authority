@@ -285,7 +285,8 @@ def projected(*, mounted, materials, engines, app, payload, plan, workspace, run
                                  str(mounted / 'native-tools' / name), str(INFRA / source)], timeout=90)
             observed = json.loads(native['fixed'](
                 ['/usr/bin/unshare', '--mount', '--net', '--pid', '--fork', '--mount-proc',
-                 '/usr/bin/python3', '-I', str(Path(__file__).resolve()), '--inside', str(mounted)],
+                 '/usr/bin/python3', '-I', str(Path(__file__).resolve()), '--inside', str(mounted),
+                 'voice'],
                 timeout=3700, maximum=65536))
     need(observed['privateVoiceRunExecuted'] is True and
          observed['actualOfflineApkCommandExecuted'] is True and

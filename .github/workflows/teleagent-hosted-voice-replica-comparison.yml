@@ -1,0 +1,70 @@
+name: Teleagent corrected app unsigned hosted voice replica comparison
+
+on:
+  push:
+    branches:
+      - fix/teleagent-v3-gate-release
+    paths:
+      - .github/workflows/teleagent-hosted-voice-replica-comparison.yml
+      - scripts/compare-hosted-voice-replicas.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    name: compare-independent-hosted-image-blobs-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Require exact hosted authority branch and two successful builds
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/fix/teleagent-v3-gate-release
+          while read -r run_id head event; do
+            observed=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+              --jq '[.status,.conclusion,.head_sha,.head_branch,.run_attempt,.path,.event] | @tsv')
+            IFS=$'\t' read -r status conclusion sha branch attempt workflow actual_event <<< "$observed"
+            test "$status" = completed
+            test "$conclusion" = success
+            test "$sha" = "$head"
+            test "$branch" = fix/teleagent-v3-gate-release
+            test "$attempt" = 1
+            test "$workflow" = .github/workflows/teleagent-voice-image-diagnostic.yml
+            test "$actual_event" = "$event"
+          done <<'RUNS'
+          36040835605 71ab465a43025af8266f9b00903c61cc3e0d9aba workflow_dispatch
+          36041234613 68e876d6589e543162123f48fac00286e8a13403 workflow_dispatch
+          RUNS
+      - name: Read exact comparison source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Download both exact unsigned image archives
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-first" \
+            "$RUNNER_TEMP/teleagent-voice-second"
+          gh run download 36040835605 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-voice-image-current-app-diagnostic \
+            --dir "$RUNNER_TEMP/teleagent-voice-first"
+          gh run download 36041234613 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-voice-image-current-app-diagnostic \
+            --dir "$RUNNER_TEMP/teleagent-voice-second"
+      - name: Compare complete archives and all image blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I scripts/compare-hosted-voice-replicas.py \
+            "$RUNNER_TEMP/teleagent-voice-first/teleagent-voice-image-diagnostic.docker.tar" \
+            "$RUNNER_TEMP/teleagent-voice-second/teleagent-voice-image-diagnostic.docker.tar"

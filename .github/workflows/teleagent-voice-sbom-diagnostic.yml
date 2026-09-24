@@ -100,7 +100,7 @@ jobs:
             --source-name teleagent-voice \
             --source-version 4279253269c71acfda20916707d26b4e51591c16 \
             --output "cyclonedx-json@1.6=$RUNNER_TEMP/teleagent-voice-sbom/voice.raw.cdx.json"
-          python3 -I app/scripts/release/ci_release_support.py normalize-sbom \
+          python3 -E -s app/scripts/release/ci_release_support.py normalize-sbom \
             --source "$RUNNER_TEMP/teleagent-voice-sbom/voice.raw.cdx.json" \
             --destination "$RUNNER_TEMP/teleagent-voice-sbom/voice.cdx.json" \
             --forbid-path "$RUNNER_TEMP"

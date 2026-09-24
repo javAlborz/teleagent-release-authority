@@ -48,6 +48,7 @@ def fixture():
                                    'GITHUB_REPOSITORY': POLICY.AUTHORITY_REPO,
                                    'GITHUB_REPOSITORY_ID': POLICY.AUTHORITY_REPO_ID,
                                    'GITHUB_REF': 'refs/heads/main',
+                                   'GITHUB_REF_PROTECTED': 'true',
                                    'GITHUB_EVENT_NAME': 'workflow_dispatch',
                                    'GITHUB_WORKFLOW_REF': POLICY.AUTHORITY_REPO +
                                    '/' + POLICY.WORKFLOW + '@refs/heads/main',

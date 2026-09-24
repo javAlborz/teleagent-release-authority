@@ -50,23 +50,19 @@ verifier must compare them to current authenticated metadata and bind an exact
 
 ## Current refusal state
 
-No release build, release-artifact comparison, release signing or deployment workflow or
-trusted signing root is selected or installed here. The branch-only unsigned
-libc diagnostic compares two fresh dependency observations per target when
-manually dispatched. By default it discards compiled outputs. An explicit
-experimental mode retains and reconstructs bounded unsigned dependency tars
-for one day. Neither mode produces an admitted release artifact. A separate
-branch-only fixture attests only fixed harmless text and verifies its certified
-workflow identity; it grants no Teleagent release authority. A separate hosted
-diagnostic verifies the selected BuildKit archive's upstream Sigstore bundle,
-subject and exact signer/source identity; that upstream claim does not approve
-any Teleagent artifact. The sole Actions
-environment secret is the
-temporary private-infrastructure read key described above; there are no
-signing keys, OIDC grants, release artifacts or promotion dispatches. The
-source-only draft infrastructure PRs do not meet the build or signing
-requirements above. Keep the live phone locked until an independently
-verified release and installation satisfy every remaining gate.
+No accepted release decision, deployment workflow, or consuming host trust root
+is installed here. Branch-only diagnostics have produced matching unsigned
+native dependencies, voice images, and complete release bundles on fresh hosted
+runners. A fresh diagnostic vulnerability scan and independent package inventory
+cover the fixed public image. A private offline build produced a byte-identical
+image subject under a different Docker export tag. Separate GitHub OIDC signer
+and consuming-verifier jobs exercised the image and bundle, but their predicates
+explicitly withhold release approval. Input and scanner policy acceptance,
+release signing, host installation, and live phone acceptance remain open. The
+temporary private-infrastructure read key described above is the sole Actions
+environment secret; diagnostic OIDC grants do not convey release authority.
+Keep the live phone locked until an independently verified release and
+installation satisfy every remaining gate.
 
 ## Solo-owner source governance
 

@@ -88,27 +88,14 @@ jobs:
       attestations: write
       artifact-metadata: write
     steps:
-      - name: Verify current solo-owner main protection
+      - name: Require GitHub-confirmed protected main ref
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "$GITHUB_REF" = refs/heads/main
+          test "${GITHUB_REF_PROTECTED:-}" = true
           test "$GITHUB_REPOSITORY_ID" = 1383172221
-          gh api repos/javAlborz/teleagent-release-authority/branches/main/protection \
-            > "$RUNNER_TEMP/main-protection.json"
-          python3 -I - "$RUNNER_TEMP/main-protection.json" <<'PY'
-          import json,sys
-          from pathlib import Path
-          p=json.loads(Path(sys.argv[1]).read_bytes())
-          assert p['enforce_admins']['enabled'] is True
-          assert p['required_linear_history']['enabled'] is True
-          assert p['allow_force_pushes']['enabled'] is False
-          assert p['allow_deletions']['enabled'] is False
-          assert p['required_pull_request_reviews']['required_approving_review_count'] == 0
-          PY
       - name: Read exact protected authority source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:

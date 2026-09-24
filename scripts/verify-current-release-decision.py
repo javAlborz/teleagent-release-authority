@@ -241,6 +241,7 @@ def authorized_context(environment):
          environment.get('GITHUB_REPOSITORY') == AUTHORITY_REPO and
          environment.get('GITHUB_REPOSITORY_ID') == AUTHORITY_REPO_ID and
          environment.get('GITHUB_REF') == 'refs/heads/main' and
+         environment.get('GITHUB_REF_PROTECTED') == 'true' and
          environment.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and
          environment.get('GITHUB_WORKFLOW_REF') ==
          AUTHORITY_REPO + '/' + WORKFLOW + '@refs/heads/main' and

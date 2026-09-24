@@ -27,6 +27,7 @@ class ReleaseDecisionTests(unittest.TestCase):
             'GITHUB_REPOSITORY': DECIDE.AUTHORITY_REPO,
             'GITHUB_REPOSITORY_ID': DECIDE.AUTHORITY_REPO_ID,
             'GITHUB_REF': 'refs/heads/main',
+            'GITHUB_REF_PROTECTED': 'true',
             'GITHUB_EVENT_NAME': 'workflow_dispatch',
             'GITHUB_WORKFLOW_REF':
                 DECIDE.AUTHORITY_REPO + '/' + DECIDE.WORKFLOW + '@refs/heads/main',
@@ -35,6 +36,7 @@ class ReleaseDecisionTests(unittest.TestCase):
         self.assertEqual(DECIDE.authorized_context(context), 'a' * 40)
         for key, value in (
             ('GITHUB_REF', 'refs/heads/feat/hosted-capacity-probe-20260923'),
+            ('GITHUB_REF_PROTECTED', 'false'),
             ('GITHUB_REPOSITORY_ID', '1'),
             ('GITHUB_WORKFLOW_REF', DECIDE.AUTHORITY_REPO + '/unreviewed.yml@refs/heads/main'),
             ('RUNNER_ENVIRONMENT', 'self-hosted'),

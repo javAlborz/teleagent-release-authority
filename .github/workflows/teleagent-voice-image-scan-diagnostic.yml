@@ -1,4 +1,4 @@
-name: Teleagent unsigned voice image vulnerability scan diagnostic only
+name: Teleagent current app unsigned voice image vulnerability scan diagnostic only
 
 on:
   push:
@@ -32,12 +32,12 @@ jobs:
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35939655157" \
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35992359796" \
             --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
             | { read -r status conclusion head_sha branch
                 test "$status" = completed
                 test "$conclusion" = success
-                test "$head_sha" = 6f5b16eb7064e77666c7eae3b4b03538541b2885
+                test "$head_sha" = e0de0feccb93b86e86c8d304efe781ba9c3be69a
                 test "$branch" = feat/hosted-capacity-probe-20260923
               }
       - name: Retrieve fixed unsigned image archive
@@ -47,12 +47,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/voice-image"
-          gh run download 35939175301 --repo "$GITHUB_REPOSITORY" \
-            --name unsigned-voice-image-diagnostic --dir "$RUNNER_TEMP/voice-image"
+          gh run download 35992034723 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-voice-image-current-app-diagnostic --dir "$RUNNER_TEMP/voice-image"
           image="$RUNNER_TEMP/voice-image/teleagent-voice-image-diagnostic.docker.tar"
           test -f "$image"
           printf '%s  %s\n' \
-            d0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732 \
+            ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220 \
             "$image" | sha256sum --check --status
       - name: Verify exact Trivy archive and contained executable bytes
         shell: bash
@@ -118,7 +118,7 @@ jobs:
       - name: Retain one-day diagnostic scan report for triage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: unsigned-voice-image-scan-diagnostic
+          name: unsigned-voice-image-current-app-scan-diagnostic
           path: |
             ${{ runner.temp }}/teleagent-trivy/scan.json
             ${{ runner.temp }}/teleagent-trivy/scan-check.json

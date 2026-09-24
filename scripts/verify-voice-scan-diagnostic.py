@@ -12,8 +12,8 @@ from pathlib import Path
 import re
 import tarfile
 
-IMAGE_SHA256 = 'd0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732'
-APP_REVISION = 'fbeaf0f22a73a575c322b3e0c05f0fa7992b919f'
+IMAGE_SHA256 = 'ebccbff28241433c3c8a2746845a4c2fbadb8e21f0de64162f42febf5fb1c220'
+APP_REVISION = '5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb'
 IMAGE_NAME = 'teleagent-voice-image-diagnostic.docker.tar'
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 
@@ -40,7 +40,7 @@ def verify(image, report_path, metadata_path, now):
         need(member.isfile() and 0 < member.size <= 65_536, 'image manifest differs')
         manifest = json.load(archive.extractfile(member))
         need(type(manifest) is list and len(manifest) == 1 and
-             manifest[0].get('RepoTags') == ['teleagent-voice-diagnostic:20260923'],
+             manifest[0].get('RepoTags') == ['teleagent-voice-diagnostic:20260924'],
              'image tag differs')
         config_name = manifest[0].get('Config')
         need(type(config_name) is str and

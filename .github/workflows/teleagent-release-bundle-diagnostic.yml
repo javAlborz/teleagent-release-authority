@@ -1,4 +1,4 @@
-name: Teleagent unsigned release bundle closure diagnostic only
+name: Teleagent current app unsigned release bundle closure diagnostic only
 
 on:
   push:
@@ -43,10 +43,10 @@ jobs:
           for row in \
             '35935470213 197be7276c00fb9d1eb89b4739eec6dcec9e6b14' \
             '35936132628 135fff99bd109d43f58bbb4778df1c022afff746' \
-            '35939655157 6f5b16eb7064e77666c7eae3b4b03538541b2885' \
-            '35939701056 e69e7fdff18ff54f04dfb31dc9fde5dc4dc80459' \
-            '35939803701 7e35c9248a76960683aaf7b44844017a323d5d9c' \
-            '35939705048 e69e7fdff18ff54f04dfb31dc9fde5dc4dc80459'; do
+            '35992359796 e0de0feccb93b86e86c8d304efe781ba9c3be69a' \
+            '35992468711 b7a130c9452a06c31d62541203bea101b22b4445' \
+            '35992626604 7c31d1bae491e7e6d126b8a962df62ede74d7027' \
+            '35992525759 e6bdb1ad55706ab70ae002cef62e296e39f304c7'; do
             read -r run_id head <<< "$row"
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
               --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
+          ref: 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
           persist-credentials: false
           path: app
       - name: Bind checked-out source identities
@@ -74,8 +74,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C app rev-parse HEAD)" = fbeaf0f22a73a575c322b3e0c05f0fa7992b919f
-          test "$(git -C app show -s --format=%T HEAD)" = 9729bffab57c1c45325f143de61d44cfa9d267ce
+          test "$(git -C app rev-parse HEAD)" = 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
+          test "$(git -C app show -s --format=%T HEAD)" = 3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C app status --porcelain)"
       - name: Acquire fixed public provider and tool inputs as data
@@ -98,10 +98,10 @@ jobs:
           gh run download 35935470213 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-observation-glibc-retry \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 35939175301 --repo "$GITHUB_REPOSITORY" \
-            --name unsigned-voice-image-diagnostic \
+          gh run download 35992034723 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-voice-image-current-app-diagnostic \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 35939705048 --repo "$GITHUB_REPOSITORY" \
+          gh run download 35992525759 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-voice-sbom-1 \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
           test "$(find "$RUNNER_TEMP/teleagent-release-inputs" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 4

@@ -259,25 +259,25 @@ def build(args):
          'host release SBOM scan refused: ' +
          result.stderr.decode('utf-8', 'replace')[-2048:])
     raw_document = json.loads(raw.read_bytes())
-    path_fields = []
-    def inspect_paths(value, prefix=''):
-        if len(path_fields) >= 12:
-            return
+    normalized_paths = [0]
+    def canonicalize_locations(value):
         if isinstance(value, str) and str(work) in value:
-            path_fields.append({'field': prefix,
-                                'value': value.replace(str(work), '<work>')[:160]})
-        elif isinstance(value, dict):
-            for key, child in value.items():
-                inspect_paths(child, prefix + '/' + str(key))
-        elif isinstance(value, list):
-            for index, child in enumerate(value):
-                inspect_paths(child, prefix + '/' + str(index))
-    inspect_paths(raw_document)
-    if path_fields:
-        print(json.dumps({'diagnosticEphemeralSbomFields': path_fields}, sort_keys=True),
-              file=sys.stderr)
+            need(value.count(str(work)) == 1 and str(release) in value,
+                 'SBOM contains a non-release ephemeral path')
+            normalized_paths[0] += 1
+            return value.replace(str(release), '/teleagent-release')
+        if isinstance(value, dict):
+            return {key: canonicalize_locations(child) for key, child in value.items()}
+        if isinstance(value, list):
+            return [canonicalize_locations(child) for child in value]
+        return value
+    raw_document = canonicalize_locations(raw_document)
+    need(normalized_paths[0] > 0, 'host SBOM did not expose expected release paths')
+    canonical_raw = work / 'release.path-normalized.cdx.json'
+    canonical_raw.write_bytes((json.dumps(raw_document, sort_keys=True, separators=(',', ':')) +
+                               '\n').encode('utf-8'))
     command(['python3', '-E', '-s', str(support), 'normalize-sbom',
-             '--source', str(raw),
+             '--source', str(canonical_raw),
              '--destination', str(release / 'artifacts/sbom/teleagent-release.cdx.json'),
              '--forbid-path', str(work)])
     build_input = work / 'build-input.json'
@@ -303,6 +303,7 @@ def build(args):
             'authorization': 'unsigned-source-only-no-release-authority',
             'applicationRevision': APP, 'applicationTree': TREE,
             'sourceEntries': source_count, 'hostDependencyFiles': dependency_files,
+            'sbomAbsoluteReleasePathsNormalized': normalized_paths[0],
             'glibcTarSha256': GLIBC_TAR, 'voiceImageTarSha256': VOICE_TAR,
             'voiceSbomSha256': VOICE_SBOM,
             'releaseManifestSha256': file_sha256(manifest),

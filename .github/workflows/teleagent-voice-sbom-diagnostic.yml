@@ -1,0 +1,155 @@
+name: Teleagent unsigned voice image SBOM diagnostic only
+
+on:
+  push:
+    branches:
+      - feat/hosted-capacity-probe-20260923
+    paths:
+      - .github/workflows/teleagent-voice-sbom-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  catalog:
+    name: catalog-unsigned-voice-image-${{ matrix.replica }}-no-release
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: ['1', '2']
+    steps:
+      - name: Require exact hosted branch and compared image
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35933905774" \
+            --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
+            | { read -r status conclusion head branch
+                test "$status" = completed
+                test "$conclusion" = success
+                test "$head" = d21efeadd5a23be4127133bcee9a666a391cf756
+                test "$branch" = feat/hosted-capacity-probe-20260923
+              }
+      - name: Read exact app source for its SBOM normalizer
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/teleagent
+          ref: 4279253269c71acfda20916707d26b4e51591c16
+          persist-credentials: false
+          path: app
+      - name: Bind exact application revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C app rev-parse HEAD)" = 4279253269c71acfda20916707d26b4e51591c16
+          test -z "$(git -C app status --porcelain)"
+      - name: Retrieve exact unsigned image archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-voice-sbom"
+          gh run download 35933786693 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-voice-image-diagnostic \
+            --dir "$RUNNER_TEMP/teleagent-voice-sbom"
+          printf '%s  %s\n' \
+            3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01 \
+            "$RUNNER_TEMP/teleagent-voice-sbom/teleagent-voice-image-diagnostic.docker.tar" \
+            | sha256sum --check --status
+      - name: Verify and execute only pinned Syft 1.51.0 on hosted runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-syft"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 180 --output "$RUNNER_TEMP/teleagent-syft/syft.tar.gz" \
+            https://github.com/anchore/syft/releases/download/v1.51.0/syft_1.51.0_linux_amd64.tar.gz
+          test "$(stat -c %s "$RUNNER_TEMP/teleagent-syft/syft.tar.gz")" = 28743977
+          printf '%s  %s\n' \
+            2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f \
+            "$RUNNER_TEMP/teleagent-syft/syft.tar.gz" | sha256sum --check --status
+          tar -xOzf "$RUNNER_TEMP/teleagent-syft/syft.tar.gz" syft \
+            > "$RUNNER_TEMP/teleagent-syft/syft"
+          test "$(stat -c %s "$RUNNER_TEMP/teleagent-syft/syft")" = 86278306
+          printf '%s  %s\n' \
+            5a8b71e94f4607973145f02e27e01d50b9f7c7bc41e38d40b39606ad138b43b5 \
+            "$RUNNER_TEMP/teleagent-syft/syft" | sha256sum --check --status
+          chmod 0500 "$RUNNER_TEMP/teleagent-syft/syft"
+          "$RUNNER_TEMP/teleagent-syft/syft" version
+      - name: Generate and normalize exact CycloneDX 1.6 SBOM as a diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SYFT_CHECK_FOR_APP_UPDATE=false
+          export SYFT_PARALLELISM=2
+          export SYFT_FORMAT_CYCLONEDX_JSON_PRETTY=false
+          image="$RUNNER_TEMP/teleagent-voice-sbom/teleagent-voice-image-diagnostic.docker.tar"
+          timeout --signal=TERM --kill-after=20s 600s \
+            "$RUNNER_TEMP/teleagent-syft/syft" scan "docker-archive:$image" \
+            --source-name teleagent-voice \
+            --source-version 4279253269c71acfda20916707d26b4e51591c16 \
+            --output "cyclonedx-json@1.6=$RUNNER_TEMP/teleagent-voice-sbom/voice.raw.cdx.json"
+          python3 -I app/scripts/release/ci_release_support.py normalize-sbom \
+            --source "$RUNNER_TEMP/teleagent-voice-sbom/voice.raw.cdx.json" \
+            --destination "$RUNNER_TEMP/teleagent-voice-sbom/voice.cdx.json" \
+            --forbid-path "$RUNNER_TEMP"
+          python3 -I - "$RUNNER_TEMP/teleagent-voice-sbom/voice.cdx.json" <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import sys
+          path = Path(sys.argv[1])
+          assert 0 < path.stat().st_size <= 20_000_000
+          data = path.read_bytes()
+          report = json.loads(data)
+          assert report['bomFormat'] == 'CycloneDX' and report['specVersion'] == '1.6'
+          packages = report.get('components') or []
+          assert len(packages) >= 100
+          qs = [item for item in packages if item.get('name') == 'qs']
+          assert len(qs) == 1 and qs[0]['version'] == '6.16.0'
+          print({'schema': 'teleagent.voice-sbom-diagnostic.v1',
+                 'componentCount': len(packages),
+                 'sbomSha256': hashlib.sha256(data).hexdigest(),
+                 'releaseApproved': False})
+          PY
+      - name: Retain only normalized diagnostic SBOM for comparison
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-voice-sbom-${{ matrix.replica }}
+          path: ${{ runner.temp }}/teleagent-voice-sbom/voice.cdx.json
+          if-no-files-found: error
+          retention-days: 1
+
+  compare:
+    name: compare-independent-unsigned-voice-sboms-no-release
+    needs: catalog
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Read the two exact normalized SBOM artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: unsigned-voice-sbom-*
+          path: ${{ runner.temp }}/teleagent-voice-sboms
+      - name: Compare complete normalized SBOM bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          first="$RUNNER_TEMP/teleagent-voice-sboms/unsigned-voice-sbom-1/voice.cdx.json"
+          second="$RUNNER_TEMP/teleagent-voice-sboms/unsigned-voice-sbom-2/voice.cdx.json"
+          test -s "$first"
+          test -s "$second"
+          cmp --silent "$first" "$second"
+          sha256sum "$first" "$second"
+          echo 'Independent normalized image SBOMs match; releaseApproved=false.'

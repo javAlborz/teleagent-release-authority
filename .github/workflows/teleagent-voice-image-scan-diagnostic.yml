@@ -103,6 +103,17 @@ jobs:
             --report "$RUNNER_TEMP/teleagent-trivy/scan.json" \
             --metadata "$cache/db/metadata.json" \
             > "$RUNNER_TEMP/teleagent-trivy/scan-check.json"
+          cp -- "$cache/db/metadata.json" "$RUNNER_TEMP/teleagent-trivy/db-metadata.json"
+          python3 -I - "$RUNNER_TEMP/teleagent-trivy" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          check = json.loads((root / 'scan-check.json').read_bytes())
+          metadata = (root / 'db-metadata.json').read_bytes()
+          assert hashlib.sha256(metadata).hexdigest() == check['databaseMetadataSha256']
+          PY
           cat "$RUNNER_TEMP/teleagent-trivy/scan-check.json"
       - name: Retain one-day diagnostic scan report for triage
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -111,5 +122,6 @@ jobs:
           path: |
             ${{ runner.temp }}/teleagent-trivy/scan.json
             ${{ runner.temp }}/teleagent-trivy/scan-check.json
+            ${{ runner.temp }}/teleagent-trivy/db-metadata.json
           if-no-files-found: error
           retention-days: 1

@@ -24,9 +24,9 @@ HERE = Path(__file__).resolve().parent
 NATIVE_PATH = HERE / 'hosted-native-build-diagnostic.py'
 PROJECT_PATH = HERE / 'project-teleagent-data-in-quota.py'
 INFRA = HERE.parent.parent / 'infrastructure/scripts/release'
-VOICE_RECIPE_SHA256 = '9f7829de408b82cce0625df00d1ab87113a297f92b8669ff949a84a336d27490'
-APP_REVISION = '5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb'
-APP_TREE = '3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b'
+VOICE_RECIPE_SHA256 = 'e551c28b3acc2ab2c098a2efe4931c18f07df6f6406e892ff5b15cb8bc2e4a1e'
+APP_REVISION = 'fd254f37a3017ad3475449987197706bbdbe7be7'
+APP_TREE = '7f605327107588728ae1a96cabe3977ecf707156'
 DEPENDENCY_TAR_SHA256 = '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f1636303655cfc925'
 MAX_APP_BYTES = 128 * 1024 * 1024
 MAX_DEPENDENCY_BYTES = 512 * 1024 * 1024
@@ -333,7 +333,7 @@ def main():
                 'LC_ALL': 'C.UTF-8', 'GITHUB_ACTIONS': 'true',
                 'RUNNER_ENVIRONMENT': 'github-hosted',
                 'GITHUB_REPOSITORY': 'javAlborz/teleagent-release-authority',
-                'GITHUB_REF': 'refs/heads/feat/hosted-capacity-probe-20260923'}
+                'GITHUB_REF': 'refs/heads/fix/teleagent-v3-gate-release'}
     need(os.geteuid() == 0 and os.uname().nodename.split('.')[0].lower() != 'hermes' and
          os.uname().machine == 'x86_64' and set(os.environ) == set(expected) and
          all(os.environ[key] == value for key, value in expected.items()),

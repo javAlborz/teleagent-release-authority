@@ -3,7 +3,7 @@ name: Teleagent current app private offline voice image diagnostic only
 on:
   push:
     branches:
-      - feat/hosted-capacity-probe-20260923
+      - fix/teleagent-v3-gate-release
     paths:
       - .github/workflows/teleagent-private-voice-image-diagnostic.yml
       - scripts/hosted-private-voice-image-diagnostic.py
@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
-          test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
+          test "${GITHUB_REF:-}" = refs/heads/fix/teleagent-v3-gate-release
           python3 - <<'PY'
           import os
           state = os.statvfs(os.environ['RUNNER_TEMP'])
@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/homelab-infrastructure
-          ref: 4482c7f19ddf91cadcdf449bb8d1849c14abcf73
+          ref: 4b790d2d40230ecc742c0970dca124bd138ffd32
           ssh-key: ${{ secrets.TELEAGENT_INFRA_SOURCE_READ_KEY }}
           persist-credentials: false
           path: infrastructure
@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
+          ref: fd254f37a3017ad3475449987197706bbdbe7be7
           persist-credentials: false
           path: app
       - name: Bind checked-out source identities
@@ -62,16 +62,16 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C infrastructure rev-parse HEAD)" = 4482c7f19ddf91cadcdf449bb8d1849c14abcf73
-          test "$(git -C app rev-parse HEAD)" = 5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb
-          test "$(git -C app show -s --format=%T HEAD)" = 3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b
+          test "$(git -C infrastructure rev-parse HEAD)" = 4b790d2d40230ecc742c0970dca124bd138ffd32
+          test "$(git -C app rev-parse HEAD)" = fd254f37a3017ad3475449987197706bbdbe7be7
+          test "$(git -C app show -s --format=%T HEAD)" = 7f605327107588728ae1a96cabe3977ecf707156
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C infrastructure status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           printf '%s\n' \
             '9caec3e0fee3c9fa44782dddeaa56f3e306aa22e6a36f0b94c218a4b9c7aed4f  infrastructure/scripts/release/teleagent-offline-materials.py' \
             '4242e5372337e33600f35386943e17197901f1e2c7fade9272f91fd74baf5707  infrastructure/scripts/release/teleagent-offline-engine-materials.py' \
-            '9f7829de408b82cce0625df00d1ab87113a297f92b8669ff949a84a336d27490  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
+            'e551c28b3acc2ab2c098a2efe4931c18f07df6f6406e892ff5b15cb8bc2e4a1e  infrastructure/scripts/release/teleagent-offline-voice-image-plan.py' \
             | sha256sum --check --status
       - name: Acquire public inputs as data only
         shell: bash
@@ -124,7 +124,7 @@ jobs:
           sudo env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
             GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted \
             GITHUB_REPOSITORY=javAlborz/teleagent-release-authority \
-            GITHUB_REF=refs/heads/feat/hosted-capacity-probe-20260923 \
+            GITHUB_REF=refs/heads/fix/teleagent-v3-gate-release \
             /usr/bin/python3 -I authority/scripts/hosted-private-voice-image-diagnostic.py \
             --hosted "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
           echo 'Private unsigned diagnostic completed; no signer, release or installation authority.'

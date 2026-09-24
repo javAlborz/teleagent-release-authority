@@ -17,10 +17,10 @@ import subprocess
 import tarfile
 import tempfile
 
-APP = 'fbeaf0f22a73a575c322b3e0c05f0fa7992b919f'
-TREE = '9729bffab57c1c45325f143de61d44cfa9d267ce'
-BUNDLE = '093951124139b66379116680fbdb1587638da3faa49763e785d0467b1542f606'
-MANIFEST = '577bbb16f21c0c24d68cd813112d99f0e3efa9b6b836cf76658fa7d4a3e58c24'
+APP = '5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb'
+TREE = '3ab9261e2de3fdd3083c970a013f0b8d1ebfe12b'
+BUNDLE = '35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b'
+MANIFEST = 'd47f125bd00fbb0f888f49c0f7e285e9940595bc0fb79bd67b43d632b46320da'
 VERIFIER = '3dc6b5247d118bc52d719a21642db5dcb6ec43f8b07888dee848daf85c53447a'
 NAME = re.compile(r'[A-Za-z0-9._+@/-]+\Z')
 
@@ -57,7 +57,7 @@ def extract(bundle, release):
                  'bundle member path, count or uniqueness differs')
             seen.add(name)
             need(member.uid == member.gid == 0 and member.uname == member.gname == '' and
-                 not member.pax_headers and member.mtime == 1790210096 and
+                 not member.pax_headers and member.mtime == 1790247516 and
                  member.mode in (0o444, 0o555), 'bundle header differs')
             relative = name[len(release_id):].removeprefix('/')
             target = release if not relative else release / relative
@@ -93,7 +93,7 @@ def run(bundle, verifier_source):
          os.uname().nodename.split('.')[0].lower() != 'hermes',
          'host contract diagnostic requires a disposable hosted runner')
     need(bundle.is_file() and not bundle.is_symlink() and
-         bundle.stat().st_size == 840_192_000 and sha(bundle) == BUNDLE,
+         bundle.stat().st_size == 840_222_720 and sha(bundle) == BUNDLE,
          'unsigned bundle differs')
     need(verifier_source.is_file() and not verifier_source.is_symlink() and
          verifier_source.stat().st_size <= 512 * 1024,

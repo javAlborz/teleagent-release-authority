@@ -1,4 +1,4 @@
-name: Teleagent unsigned release bundle attestation diagnostic only
+name: Teleagent current app unsigned release bundle attestation diagnostic only
 
 on:
   push:
@@ -30,12 +30,12 @@ jobs:
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35939971147" \
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35992749716" \
             --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
             | { read -r status conclusion head branch
                 test "$status" = completed
                 test "$conclusion" = success
-                test "$head" = 39b4cbd334d9a87a696ef4f36fe8cc16a1b93c02
+                test "$head" = f90ae9da2527d1e46b79e18a15b4eb28601e7add
                 test "$branch" = feat/hosted-capacity-probe-20260923
               }
       - name: Read and compare complete unsigned bundle candidates
@@ -47,13 +47,13 @@ jobs:
           test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 4194304
           for replica in 1 2; do
             mkdir -m 0700 "$RUNNER_TEMP/unsigned-$replica"
-            gh run download 35939971147 --repo "$GITHUB_REPOSITORY" \
+            gh run download 35992749716 --repo "$GITHUB_REPOSITORY" \
               --name "unsigned-release-bundle-$replica" \
               --dir "$RUNNER_TEMP/unsigned-$replica"
             bundle="$RUNNER_TEMP/unsigned-$replica/teleagent-release.diagnostic.tar"
-            test "$(stat -c %s "$bundle")" = 840192000
+            test "$(stat -c %s "$bundle")" = 840222720
             printf '%s  %s\n' \
-              093951124139b66379116680fbdb1587638da3faa49763e785d0467b1542f606 \
+              35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b \
               "$bundle" | sha256sum --check --status
           done
           cmp --silent "$RUNNER_TEMP/unsigned-1/teleagent-release.diagnostic.tar" \
@@ -66,9 +66,9 @@ jobs:
           import sys
           summary = json.loads(Path(sys.argv[1]).read_bytes())
           assert summary['schema'] == 'teleagent.release-bundle-diagnostic.v1'
-          assert summary['applicationRevision'] == 'fbeaf0f22a73a575c322b3e0c05f0fa7992b919f'
-          assert summary['bundleSha256'] == '093951124139b66379116680fbdb1587638da3faa49763e785d0467b1542f606'
-          assert summary['releaseManifestSha256'] == '577bbb16f21c0c24d68cd813112d99f0e3efa9b6b836cf76658fa7d4a3e58c24'
+          assert summary['applicationRevision'] == '5c0bc437ec1731bad1e8c6c348d7c72cd2b7cbfb'
+          assert summary['bundleSha256'] == '35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b'
+          assert summary['releaseManifestSha256'] == 'd47f125bd00fbb0f888f49c0f7e285e9940595bc0fb79bd67b43d632b46320da'
           assert summary['scanApproved'] is False
           assert summary['signatureVerified'] is False
           assert summary['releaseApproved'] is False
@@ -111,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s  %s\n' \
-            093951124139b66379116680fbdb1587638da3faa49763e785d0467b1542f606 \
+            35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b \
             "$RUNNER_TEMP/unsigned-bundle/teleagent-release.diagnostic.tar" \
             | sha256sum --check --status
       - name: Attest only the diagnostic archive
@@ -169,7 +169,7 @@ jobs:
           set -euo pipefail
           archive="$RUNNER_TEMP/unsigned-bundle/teleagent-release.diagnostic.tar"
           printf '%s  %s\n' \
-            093951124139b66379116680fbdb1587638da3faa49763e785d0467b1542f606 \
+            35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b \
             "$archive" | sha256sum --check --status
           gh attestation verify "$archive" \
             --bundle "$RUNNER_TEMP/attestation/bundle.json" \
@@ -195,7 +195,7 @@ jobs:
           assert statement['predicateType'] == 'https://slsa.dev/provenance/v1'
           assert type(statement['subject']) is list and len(statement['subject']) == 1
           assert statement['subject'][0]['digest'] == {
-              'sha256': '093951124139b66379116680fbdb1587638da3faa49763e785d0467b1542f606'}
+              'sha256': '35891889bd46058884f748a0901f9bba0cd593f7bc217dbfbbaf95ff49bc127b'}
           assert type(result['signature']['certificate']) is dict
           print({'schema': 'teleagent.unsigned-bundle-attestation-diagnostic.v1',
                  'diagnosticBundleAttestationVerified': True,

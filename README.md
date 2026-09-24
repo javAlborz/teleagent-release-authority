@@ -25,6 +25,15 @@ independent controller-unit pin was refreshed. The bundle SHA-256 is
 These checks still report `releaseApproved=false`; the authority does not
 publish a deployable release or install anything on Hermes.
 
+The current infrastructure source integrated the dormant recovery start fence
+at `d124326843047afc656b3df49e94eab661bfcf7e`. A new independent
+host-contract diagnostic on the unchanged unsigned bundle passed in
+[run 35997927052](https://github.com/javAlborz/teleagent-release-authority/actions/runs/35997927052),
+using the recovery-fenced verifier policy SHA-256
+`a9b235ee3e45884d36a1bf4f9d0f292f65ad4bad6a04add2d0d25ee9588a6807`.
+Its approval and runtime gate were synthetic fixtures; no shared-host release
+decision or installation followed.
+
 The initial [release policy](POLICY.md) is a review draft. The public `main`
 branch requires a pull request, including for administrators, and has linear
 history; force pushes and deletion are disabled. This is a solo-owner

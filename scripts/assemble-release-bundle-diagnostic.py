@@ -280,6 +280,12 @@ def build(args):
              '--source', str(canonical_raw),
              '--destination', str(release / 'artifacts/sbom/teleagent-release.cdx.json'),
              '--forbid-path', str(work)])
+    print(json.dumps({'hostSbomBytes': (
+        release / 'artifacts/sbom/teleagent-release.cdx.json').stat().st_size,
+        'voiceSbomBytes': (
+            release / 'artifacts/sbom/voice-image.cdx.json').stat().st_size,
+        'normalizedReleasePaths': normalized_paths[0]}, sort_keys=True),
+        file=sys.stderr)
     build_input = work / 'build-input.json'
     command(['python3', '-E', '-s', str(support), 'write-build-input',
              '--destination', str(build_input), '--revision', APP, '--tree', TREE])

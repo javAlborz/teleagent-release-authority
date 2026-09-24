@@ -288,6 +288,20 @@ def projected(*, mounted, materials, engines, app, payload, plan, workspace, run
                  '/usr/bin/python3', '-I', str(Path(__file__).resolve()), '--inside', str(mounted),
                  'voice'],
                 timeout=3700, maximum=65536))
+            retained = runner_temp / 'teleagent-private-voice-candidate'
+            need(not retained.exists(), 'private voice candidate destination already exists')
+            retained.mkdir(mode=0o700)
+            candidate = retained / 'voice-image.docker.tar'
+            source = mounted / 'native-outputs/voice-image.docker.tar'
+            need(source.is_file() and source.stat().st_size == observed['unsignedImageBytes'] and
+                 0 < source.stat().st_size <= MAX_IMAGE_BYTES,
+                 'private voice candidate changed before retention')
+            shutil.copyfile(source, candidate)
+            with candidate.open('rb') as stream:
+                copied_sha = hashlib.file_digest(stream, 'sha256').hexdigest()
+            need(candidate.stat().st_size == observed['unsignedImageBytes'] and
+                 copied_sha == observed['unsignedImageSha256'],
+                 'private voice candidate bytes changed during retention')
     need(observed['privateVoiceRunExecuted'] is True and
          observed['actualOfflineApkCommandExecuted'] is True and
          observed['releaseAuthority'] is False,
@@ -295,6 +309,9 @@ def projected(*, mounted, materials, engines, app, payload, plan, workspace, run
     return {'privateVoiceImageDiagnostic': observed,
             'voiceAppSource': app_observed, 'dependencies': dependency_observed,
             'voiceRecipeAppRevision': voice_plan['appRevision'],
+            'retainedUnsignedImage': {'sha256': copied_sha,
+                                      'bytes': observed['unsignedImageBytes'],
+                                      'releaseAuthority': False},
             'releaseAuthority': False}
 
 
@@ -326,6 +343,20 @@ def main():
         need(result['cleanupVerified'] is True and
              result['projectedCallbackResult']['releaseAuthority'] is False,
              'private voice quota cleanup differs')
+        retained = runner_temp / 'teleagent-private-voice-candidate'
+        archive = retained / 'voice-image.docker.tar'
+        expected = result['projectedCallbackResult']['retainedUnsignedImage']
+        need(archive.is_file() and archive.stat().st_size == expected['bytes'] and
+             expected['releaseAuthority'] is False,
+             'retained private voice archive absent after quota cleanup')
+        with archive.open('rb') as stream:
+            need(hashlib.file_digest(stream, 'sha256').hexdigest() == expected['sha256'],
+                 'retained private voice archive changed after quota cleanup')
+        owner = workspace.stat()
+        need(0 < owner.st_uid <= 65535 and 0 < owner.st_gid <= 65535,
+             'hosted retained candidate owner differs')
+        os.chown(archive, owner.st_uid, owner.st_gid)
+        os.chown(retained, owner.st_uid, owner.st_gid)
         print(json.dumps(result, sort_keys=True))
 
 

@@ -31,10 +31,10 @@ jobs:
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/feat/hosted-capacity-probe-20260923
           for row in \
-            '35933786693 3ca573d1c62e473851913e3107e3aacdc9de5232' \
-            '35933788586 3ca573d1c62e473851913e3107e3aacdc9de5232' \
-            '35933905774 d21efeadd5a23be4127133bcee9a666a391cf756' \
-            '35934797140 eb059882c1b4622ddee7f61ae1a7ef685493cf13'; do
+            '35939175301 c5a7eeddd3813dd34dd052cf83bbb68f69b1b637' \
+            '35939187639 c5a7eeddd3813dd34dd052cf83bbb68f69b1b637' \
+            '35939655157 6f5b16eb7064e77666c7eae3b4b03538541b2885' \
+            '35939701056 e69e7fdff18ff54f04dfb31dc9fde5dc4dc80459'; do
             read -r run_id head <<< "$row"
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
               --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
@@ -52,12 +52,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/teleagent-unsigned-voice-image"
-          gh run download 35933786693 --repo "$GITHUB_REPOSITORY" \
+          gh run download 35939175301 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-voice-image-diagnostic \
             --dir "$RUNNER_TEMP/teleagent-unsigned-voice-image"
           test "$(find "$RUNNER_TEMP/teleagent-unsigned-voice-image" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 1
           printf '%s  %s\n' \
-            3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01 \
+            d0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732 \
             "$RUNNER_TEMP/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar" \
             | sha256sum --check --status
       - name: Pass only exact unsigned archive bytes to a separate signer
@@ -97,7 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s  %s\n' \
-            3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01 \
+            d0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732 \
             "$RUNNER_TEMP/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar" \
             | sha256sum --check --status
       - name: Attest only the diagnostic archive
@@ -156,7 +156,7 @@ jobs:
           set -euo pipefail
           archive="$RUNNER_TEMP/teleagent-unsigned-voice-image/teleagent-voice-image-diagnostic.docker.tar"
           printf '%s  %s\n' \
-            3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01 \
+            d0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732 \
             "$archive" | sha256sum --check --status
           gh attestation verify "$archive" \
             --bundle "$RUNNER_TEMP/teleagent-unsigned-image-bundle/bundle.json" \
@@ -182,7 +182,7 @@ jobs:
           assert statement['predicateType'] == 'https://slsa.dev/provenance/v1'
           assert type(statement['subject']) is list and len(statement['subject']) == 1
           assert statement['subject'][0]['digest'] == {
-              'sha256': '3d8aa6bf1509f45cbe2dc78a2679b3a16b14fe4043749920c9a864c0b6026e01'}
+              'sha256': 'd0f5a54397cfcbca171be291796dcd12629221032148392e9fd735bff5a50732'}
           assert type(result['signature']['certificate']) is dict
           print({'schema': 'teleagent.unsigned-image-attestation-diagnostic.v1',
                  'diagnosticImageVerified': True, 'scanApproved': False,

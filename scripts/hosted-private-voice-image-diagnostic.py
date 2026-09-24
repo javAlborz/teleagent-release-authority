@@ -52,15 +52,17 @@ def stage_app(root, destination):
          git(root, 'show', '-s', '--format=%T', 'HEAD').strip().decode('ascii') == APP_TREE and
          git(root, 'status', '--porcelain') == b'',
          'voice app revision, tree or cleanliness differs')
-    listing = git(root, 'ls-files', '-s', '-z', '--', 'voice-app', 'lib')
+    listing = git(root, 'ls-files', '-s', '-z', '--', '.dockerignore', 'voice-app', 'lib')
     rows = listing.rstrip(b'\0').split(b'\0')
     need(100 <= len(rows) <= 300 and len(set(rows)) == len(rows),
          'voice source file count differs')
     destination.mkdir(mode=0o700)
     total = 0
-    seen = set()
+    seen, staged = set(), 0
     for row in rows:
-        match = re.fullmatch(rb'100644 ([0-9a-f]{40}) 0\t((?:voice-app|lib)/[A-Za-z0-9_./+-]+)', row)
+        match = re.fullmatch(
+            rb'100644 ([0-9a-f]{40}) 0\t((?:voice-app|lib)/[A-Za-z0-9_./+-]+|\.dockerignore)',
+            row)
         need(match is not None, 'voice source mode or path differs')
         path = match.group(2).decode('ascii')
         need(path not in seen and all(component not in ('', '.', '..') for component in path.split('/')),
@@ -81,14 +83,20 @@ def stage_app(root, destination):
              match.group(1).decode('ascii'), 'voice source bytes differ from Git tree')
         total += len(data)
         need(total <= MAX_APP_BYTES, 'voice source aggregate exceeds bound')
+        if path.startswith(('voice-app/test/', 'voice-app/audio/',
+                            'voice-app/state/', 'voice-app/coverage/')):
+            continue
         target = destination / path
         target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
         target.write_bytes(data)
         target.chmod(0o644)
-    need('voice-app/package.json' in seen and 'voice-app/index.js' in seen,
+        staged += 1
+    need('.dockerignore' in seen and 'voice-app/package.json' in seen and
+         'voice-app/index.js' in seen and staged < len(seen),
          'voice source entrypoints absent')
     destination.chmod(0o755)
-    return {'files': len(seen), 'bytes': total, 'tree': APP_TREE}
+    return {'verifiedFiles': len(seen), 'stagedFiles': staged,
+            'verifiedBytes': total, 'tree': APP_TREE}
 
 
 def stage_dependencies(source, destination):

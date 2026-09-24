@@ -152,7 +152,7 @@ def bind(source, destination, readonly=False):
          'private native bind identity differs')
 
 
-def private_root(mounted, probe):
+def private_root(mounted, probe, *, voice=False):
     """Create a bounded exec-capable root with quota-backed state and outputs."""
     private = mounted / 'native-private-root'
     private.mkdir(mode=0o700)
@@ -164,7 +164,8 @@ def private_root(mounted, probe):
     for name in ('probe', 'proc', 'sys/fs/cgroup', 'dev', 'etc', 'tmp', 'state',
                  'run/teleagent-build', 'infra/bin', 'infra/context',
                  'infra/empty-provenance', 'infra/empty-docker-config',
-                 'infra/glibc', 'infra/musl', 'engines/bin', 'inputs/app', 'materials',
+                 'infra/glibc', 'infra/musl', 'infra/voice-image', 'engines/bin',
+                 'inputs/app', 'inputs/dependencies', 'materials',
                  'outputs', 'private-home'):
         (private / name).mkdir(mode=0o700, parents=True, exist_ok=True)
     for name, source in (
@@ -197,7 +198,11 @@ def private_root(mounted, probe):
     bind(mounted / 'native-state', private / 'state')
     bind(mounted / 'native-outputs', private / 'outputs')
     bind(mounted / 'sealed-materials', private / 'materials', readonly=True)
-    bind(mounted / 'sealed-app-source', private / 'inputs/app', readonly=True)
+    bind(mounted / ('sealed-voice-app-source' if voice else 'sealed-app-source'),
+         private / 'inputs/app', readonly=True)
+    if voice:
+        bind(mounted / 'sealed-voice-dependencies',
+             private / 'inputs/dependencies', readonly=True)
     bind(mounted / 'sealed-payload-source', private / 'infra/payload', readonly=True)
     os.chroot(private)
     os.chdir('/')

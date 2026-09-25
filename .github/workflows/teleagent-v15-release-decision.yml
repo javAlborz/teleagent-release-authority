@@ -1,0 +1,211 @@
+name: Teleagent v15 release decision
+
+on:
+  push:
+    branches:
+      - feat/teleagent-v15-release-authority-20260925
+    paths:
+      - .github/workflows/teleagent-v15-release-decision.yml
+      - scripts/verify-v15-release-decision.py
+      - scripts/consume-v15-release-decision.py
+      - scripts/fetch-v15-release-inputs.sh
+      - scripts/test_verify_v15_release_decision.py
+      - scripts/test_consume_v15_release_decision.py
+      - scripts/fixtures/v15-release-summary.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    name: Compare exact current bundle replicas and fresh scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require hosted authority branch or protected main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REPOSITORY_ID:-}" = 1383172221
+          case "$GITHUB_REF" in
+            refs/heads/feat/teleagent-v15-release-authority-20260925|refs/heads/main) ;;
+            *) exit 1 ;;
+          esac
+          test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 5242880
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Check decision and consumer refusal contracts
+        run: |
+          python3 -I scripts/test_verify_v15_release_decision.py
+          python3 -I scripts/test_consume_v15_release_decision.py
+      - name: Fetch pinned hosted evidence only
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/fetch-v15-release-inputs.sh
+      - name: Recompare complete bytes and recompute current scan decision
+        shell: bash
+        run: |
+          set -euo pipefail
+          input="$RUNNER_TEMP/teleagent-v15-release-inputs"
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-release-evidence"
+          python3 -I scripts/verify-v15-release-decision.py \
+            --bundle-a "$input/bundle-a/teleagent-release.diagnostic.tar" \
+            --bundle-b "$input/bundle-b/teleagent-release.diagnostic.tar" \
+            --summary-a "$input/bundle-a/summary.json" \
+            --summary-b "$input/bundle-b/summary.json" \
+            --voice-image "$input/image/teleagent-v15-voice-image.docker.tar" \
+            --scan-report "$input/scan/scan.json" \
+            --scan-metadata "$input/scan/db-metadata.json" \
+            --scan-check "$input/scan/scan-check.json" \
+            --output "$RUNNER_TEMP/teleagent-release-evidence/decision.json"
+      - name: Retain bounded evidence decision
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-v15-release-evidence
+          path: ${{ runner.temp }}/teleagent-release-evidence/decision.json
+          if-no-files-found: error
+          retention-days: 2
+
+  sign:
+    name: Sign only the protected main release decision
+    if: github.ref == 'refs/heads/main'
+    needs: evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Require GitHub-confirmed protected main ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "$GITHUB_REF" = refs/heads/main
+          test "${GITHUB_REF_PROTECTED:-}" = true
+          test "$GITHUB_REPOSITORY_ID" = 1383172221
+      - name: Read exact protected authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Independently fetch pinned hosted evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/fetch-v15-release-inputs.sh
+      - name: Revalidate and form one protected decision predicate
+        shell: bash
+        run: |
+          set -euo pipefail
+          input="$RUNNER_TEMP/teleagent-v15-release-inputs"
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-accepted-release"
+          install -m 0444 "$input/bundle-a/teleagent-release.diagnostic.tar" \
+            "$RUNNER_TEMP/teleagent-accepted-release/teleagent-release.tar"
+          python3 -I scripts/verify-v15-release-decision.py \
+            --bundle-a "$RUNNER_TEMP/teleagent-accepted-release/teleagent-release.tar" \
+            --bundle-b "$input/bundle-b/teleagent-release.diagnostic.tar" \
+            --summary-a "$input/bundle-a/summary.json" \
+            --summary-b "$input/bundle-b/summary.json" \
+            --voice-image "$input/image/teleagent-v15-voice-image.docker.tar" \
+            --scan-report "$input/scan/scan.json" \
+            --scan-metadata "$input/scan/db-metadata.json" \
+            --scan-check "$input/scan/scan-check.json" \
+            --output "$RUNNER_TEMP/teleagent-accepted-release/decision.json" \
+            --authorize
+      - name: Attest the exact accepted release subject and decision
+        id: attest
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v5.2.0
+        with:
+          subject-path: ${{ runner.temp }}/teleagent-accepted-release/teleagent-release.tar
+          predicate-type: https://github.com/javAlborz/teleagent-release-authority/attestations/release-decision/v1
+          predicate-path: ${{ runner.temp }}/teleagent-accepted-release/decision.json
+      - name: Retain exact Sigstore bundle beside subject
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          test -s "$ATTESTATION_BUNDLE"
+          install -m 0444 "$ATTESTATION_BUNDLE" \
+            "$RUNNER_TEMP/teleagent-accepted-release/attestation.json"
+      - name: Pass the signed subject to an independent consumer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-v15-release-signed-input
+          path: ${{ runner.temp }}/teleagent-accepted-release/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  consume:
+    name: Verify signer and publish exact host approval
+    if: github.ref == 'refs/heads/main'
+    needs: sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Require fresh hosted protected main consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_REPOSITORY_ID" = 1383172221
+      - name: Read exact authority consumer source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Receive only the signed release files
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v7.0.1
+        with:
+          name: teleagent-v15-release-signed-input
+          path: ${{ runner.temp }}/teleagent-consumed-release
+      - name: Verify exact custom attestation and signer identity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release="$RUNNER_TEMP/teleagent-consumed-release"
+          test "$(find "$release" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 3
+          printf '%s  %s\n' \
+            '31195220a1792d0675fd1c6ca8a5a142dd3501190329119021000678480f12de' \
+            "$release/teleagent-release.tar" | sha256sum --check --status
+          gh attestation verify "$release/teleagent-release.tar" \
+            --bundle "$release/attestation.json" \
+            --repo javAlborz/teleagent-release-authority \
+            --signer-workflow javAlborz/teleagent-release-authority/.github/workflows/teleagent-v15-release-decision.yml \
+            --signer-digest "$GITHUB_SHA" \
+            --source-digest "$GITHUB_SHA" \
+            --source-ref refs/heads/main \
+            --deny-self-hosted-runners \
+            --cert-oidc-issuer https://token.actions.githubusercontent.com \
+            --predicate-type https://github.com/javAlborz/teleagent-release-authority/attestations/release-decision/v1 \
+            --format json > "$RUNNER_TEMP/teleagent-verified-attestation.json"
+          python3 -I scripts/consume-v15-release-decision.py \
+            --verified "$RUNNER_TEMP/teleagent-verified-attestation.json" \
+            --decision "$release/decision.json" \
+            --bundle "$release/teleagent-release.tar" \
+            --approval "$release/release-approval.json"
+      - name: Retain the verified release and exact approval
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: teleagent-v15-accepted-release
+          path: ${{ runner.temp }}/teleagent-consumed-release/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

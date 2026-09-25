@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Fetch only the exact hosted v8 release evidence for a protected decision.
+set -euo pipefail
+
+[[ ${GITHUB_ACTIONS:-} == true && ${RUNNER_ENVIRONMENT:-} == github-hosted &&
+   ${GITHUB_REPOSITORY:-} == javAlborz/teleagent-release-authority &&
+   ${GITHUB_REPOSITORY_ID:-} == 1383172221 && -n ${GH_TOKEN:-} ]] || {
+  echo 'v8 release inputs require the hosted authority workflow' >&2
+  exit 1
+}
+[[ -n ${RUNNER_TEMP:-} && -d ${RUNNER_TEMP:-} ]] || exit 1
+
+while read -r run_id head expected_branch attempt expected_path expected_event; do
+  [[ -n $run_id ]] || continue
+  response=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+    --jq '[.status,.conclusion,.head_sha,.head_branch,.run_attempt,.repository.id,.path,.event] | @tsv')
+  IFS=$'\t' read -r status conclusion observed branch observed_attempt repository_id path event <<< "$response"
+  [[ $status == completed && $conclusion == success && $observed == "$head" &&
+     $branch == "$expected_branch" && $observed_attempt == "$attempt" &&
+     $repository_id == 1383172221 && $path == "$expected_path" &&
+     $event == "$expected_event" ]] || {
+    echo "fixed v8 release evidence run $run_id differs" >&2
+    exit 1
+  }
+done <<'RUNS'
+35935470213 197be7276c00fb9d1eb89b4739eec6dcec9e6b14 feat/hosted-capacity-probe-20260923 1 .github/workflows/teleagent-native-build-diagnostic.yml workflow_dispatch
+36146223139 2de8657e506ea1ddab671615a4fb6d579470f40d feat/teleagent-v8-release-authority-20260925 1 .github/workflows/teleagent-v8-hosted-voice-image.yml push
+36146402967 a3184747d38b226fe4be28194a80dde16def2523 feat/teleagent-v8-release-authority-20260925 1 .github/workflows/teleagent-v8-hosted-voice-sbom.yml push
+36146402938 a3184747d38b226fe4be28194a80dde16def2523 feat/teleagent-v8-release-authority-20260925 1 .github/workflows/teleagent-v8-hosted-voice-scan.yml push
+36146558540 47e1adcc9644e74a6e47ef6481f1f2f161620e4e feat/teleagent-v8-release-authority-20260925 1 .github/workflows/teleagent-v8-hosted-release-bundle.yml push
+RUNS
+
+base="$RUNNER_TEMP/teleagent-v8-release-inputs"
+[[ ! -e $base && ! -L $base ]] || {
+  echo 'v8 release input root already exists' >&2
+  exit 1
+}
+mkdir -m 0700 -- "$base"
+for name in bundle-a bundle-b image scan; do
+  mkdir -m 0700 -- "$base/$name"
+done
+gh run download 36146558540 --repo "$GITHUB_REPOSITORY" \
+  --name unsigned-v8-release-bundle-1 --dir "$base/bundle-a"
+gh run download 36146558540 --repo "$GITHUB_REPOSITORY" \
+  --name unsigned-v8-release-bundle-2 --dir "$base/bundle-b"
+gh run download 36146223139 --repo "$GITHUB_REPOSITORY" \
+  --name unsigned-v8-voice-image-1 --dir "$base/image"
+gh run download 36146402938 --repo "$GITHUB_REPOSITORY" \
+  --name unsigned-v8-voice-image-scan --dir "$base/scan"
+
+[[ $(find "$base/bundle-a" -mindepth 1 -maxdepth 1 -type f | wc -l) == 2 &&
+   $(find "$base/bundle-b" -mindepth 1 -maxdepth 1 -type f | wc -l) == 2 &&
+   $(find "$base/image" -mindepth 1 -maxdepth 1 -type f | wc -l) == 1 &&
+   $(find "$base/scan" -mindepth 1 -maxdepth 1 -type f | wc -l) == 3 ]] || {
+  echo 'v8 release input artifact members differ' >&2
+  exit 1
+}
+echo 'Pinned v8 release input artifacts downloaded for independent verification.'

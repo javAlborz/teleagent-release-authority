@@ -1,6 +1,12 @@
 name: Teleagent v4 unsigned hosted voice image replicas
 
 on:
+  push:
+    branches:
+      - feat/teleagent-v4-release-authority-20260925
+    paths:
+      - .github/workflows/teleagent-v4-hosted-voice-image.yml
+      - scripts/v4-voice-image-plan.py
   workflow_dispatch:
 
 permissions:

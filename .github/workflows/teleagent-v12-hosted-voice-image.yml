@@ -1,0 +1,194 @@
+name: Teleagent v12 unsigned hosted voice image replicas
+
+on:
+  push:
+    branches:
+      - feat/teleagent-v12-release-authority-20260925
+    paths:
+      - .github/workflows/teleagent-v12-hosted-voice-image.yml
+      - scripts/v12-voice-image-plan.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  image:
+    name: unsigned-v12-voice-image-${{ matrix.replica }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        replica: ['1', '2']
+    steps:
+      - name: Require exact hosted authority source and native input job
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/teleagent-v12-release-authority-20260925
+          test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 15728640
+          gh api repos/javAlborz/teleagent-release-authority/actions/jobs/107422715450 \
+            --jq '[.status,.conclusion,.run_id,.name] | @tsv' \
+            | { read -r status conclusion run_id name
+                test "$status" = completed
+                test "$conclusion" = success
+                test "$run_id" = 35932701529
+                test "$name" = unsigned-musl-1
+              }
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          path: authority
+      - name: Read exact public app source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/teleagent
+          ref: d4c0444acb01d64dfa1f2e820353f73a5b176e00
+          persist-credentials: false
+          path: app
+      - name: Bind source identities and render fixed offline recipe
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C app rev-parse HEAD)" = d4c0444acb01d64dfa1f2e820353f73a5b176e00
+          test "$(git -C app show -s --format=%T HEAD)" = 8a7d1bfdf60915ead98e226fcc33b3a899990c5c
+          test "$(git -C app show -s --format=%ct HEAD)" = 1790356109
+          test -z "$(git -C authority status --porcelain)"
+          test -z "$(git -C app status --porcelain)"
+          python3 -I - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          record = Path('authority/inputs/teleagent/source-pairs-patched-20260923.json')
+          assert hashlib.sha256(record.read_bytes()).hexdigest() == 'dada99e66a0831b7ab974c392affcabe13b4c1ace13d2e9c9b65155d3c7900a9'
+          pairs = json.loads(record.read_bytes())
+          assert len(pairs) == 12
+          for row in pairs:
+              assert hashlib.sha256((Path('app') / row['path']).read_bytes()).hexdigest() == row['sha256']
+          PY
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-v12-voice-recipe"
+          python3 -I - "$RUNNER_TEMP/teleagent-v12-voice-recipe/Dockerfile" <<'PY'
+          from pathlib import Path
+          import runpy
+          import sys
+          source = runpy.run_path('authority/scripts/v12-voice-image-plan.py', run_name='v12_voice_recipe')
+          assert source['APP_REVISION'] == 'd4c0444acb01d64dfa1f2e820353f73a5b176e00'
+          assert source['APP_TREE'] == '8a7d1bfdf60915ead98e226fcc33b3a899990c5c'
+          assert source['APP_EPOCH'] == 1790356109
+          assert source['MUSL_DEPENDENCY_TAR'] == '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f1636303655cfc925'
+          Path(sys.argv[1]).write_text(source['dockerfile'](), encoding='ascii')
+          PY
+      - name: Retrieve exact preserved hosted musl candidate as unsigned data
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-v12-musl-inputs"
+          gh release download teleagent-native-materials-20260923 \
+            --repo javAlborz/teleagent-release-authority \
+            --pattern musl-1.tar --pattern musl-1.json \
+            --dir "$RUNNER_TEMP/teleagent-v12-musl-inputs"
+          printf '%s\n' \
+            '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f1636303655cfc925  '"$RUNNER_TEMP"'/teleagent-v12-musl-inputs/musl-1.tar' \
+            '36ed8e682d6ec6275a5ffaf7bf92045496353bd2e94d4d535989dc6d2e4c2929  '"$RUNNER_TEMP"'/teleagent-v12-musl-inputs/musl-1.json' \
+            | sha256sum --check --status
+          python3 -I authority/scripts/extract-verified-musl-dependencies.py \
+            --tar "$RUNNER_TEMP/teleagent-v12-musl-inputs/musl-1.tar" \
+            --observation "$RUNNER_TEMP/teleagent-v12-musl-inputs/musl-1.json" \
+            --destination "$RUNNER_TEMP/teleagent-v12-musl-dependencies"
+      - name: Stage fixed signed-index local Alpine packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$RUNNER_TEMP/teleagent-v12-apk-materials/apk"
+          mkdir -p "$apk/main/x86_64" "$apk/community/x86_64"
+          install -m 0444 authority/inputs/teleagent/index-objects/c1cbca81ade3696886de11a5f02777fe185ccba525edd58403e29b08050993a1 \
+            "$apk/main/x86_64/APKINDEX.tar.gz"
+          install -m 0444 authority/inputs/teleagent/index-objects/0134bc50ab7ac75bf593d035e6278a365e8d83a6157f685b3ffe5e78985f9dd3 \
+            "$apk/community/x86_64/APKINDEX.tar.gz"
+          printf '/materials/apk/main\n/materials/apk/community\n' > "$apk/repositories"
+          printf '%s\n' \
+            'c1cbca81ade3696886de11a5f02777fe185ccba525edd58403e29b08050993a1  '"$apk"'/main/x86_64/APKINDEX.tar.gz' \
+            '0134bc50ab7ac75bf593d035e6278a365e8d83a6157f685b3ffe5e78985f9dd3  '"$apk"'/community/x86_64/APKINDEX.tar.gz' \
+            | sha256sum --check --status
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 120 --output "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk" \
+            https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libcrypto3-3.5.8-r0.apk
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 120 --output "$apk/main/x86_64/libssl3-3.5.8-r0.apk" \
+            https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libssl3-3.5.8-r0.apk
+          test "$(stat -c %s "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk")" = 1978546
+          test "$(stat -c %s "$apk/main/x86_64/libssl3-3.5.8-r0.apk")" = 379265
+          printf '%s\n' \
+            '161223a16f042b8e469e9441291e071464fd91d4f4bbe6f496ee8d0abd4e0701  '"$apk"'/main/x86_64/libcrypto3-3.5.8-r0.apk' \
+            'aca521e5ae4a321322a9d47ed64a1775f5ab1ffd215d1e9fc0433c58f7bfd037  '"$apk"'/main/x86_64/libssl3-3.5.8-r0.apk' \
+            | sha256sum --check --status
+      - name: Build one unsigned network-disconnected voice image
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH=1790356109
+          builder="teleagent-v12-voice-${{ matrix.replica }}"
+          trap 'docker buildx rm "$builder" >/dev/null 2>&1 || true' EXIT
+          docker buildx create --name "$builder" --driver docker-container \
+            --driver-opt image=moby/buildkit@sha256:a461e7f0ce921972028acfbed628d45663d83e67ac1230722c2b34cf72760a0d \
+            --bootstrap
+          docker buildx build --builder "$builder" \
+            --platform linux/amd64 --no-cache --network none --provenance=false \
+            --build-arg SOURCE_DATE_EPOCH=1790356109 \
+            --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
+            --build-context app="$GITHUB_WORKSPACE/app" \
+            --build-context dependencies="$RUNNER_TEMP/teleagent-v12-musl-dependencies" \
+            --build-context materials="$RUNNER_TEMP/teleagent-v12-apk-materials" \
+            --file "$RUNNER_TEMP/teleagent-v12-voice-recipe/Dockerfile" \
+            --tag teleagent-v12-voice-diagnostic:20260925 \
+            --output "type=docker,dest=$RUNNER_TEMP/teleagent-v12-voice-image.docker.tar,rewrite-timestamp=true" \
+            "$RUNNER_TEMP/teleagent-v12-voice-recipe"
+          docker load --input "$RUNNER_TEMP/teleagent-v12-voice-image.docker.tar"
+          test "$(docker image inspect teleagent-v12-voice-diagnostic:20260925 \
+            --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
+            d4c0444acb01d64dfa1f2e820353f73a5b176e00
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 64 --memory 512m \
+            --user 10001:10001 --entrypoint node teleagent-v12-voice-diagnostic:20260925 \
+            -e 'const DB=require("better-sqlite3");const db=new DB(":memory:");db.exec("create table smoke(n integer)");db.close();console.log("VOICE_NATIVE_SMOKE_OK")'
+          sha256sum "$RUNNER_TEMP/teleagent-v12-voice-image.docker.tar"
+      - name: Retain unsigned hosted voice image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-v12-voice-image-${{ matrix.replica }}
+          path: ${{ runner.temp }}/teleagent-v12-voice-image.docker.tar
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  compare:
+    name: compare-independent-hosted-voice-images
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Read both unsigned image replicas
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v7.0.1
+        with:
+          pattern: unsigned-v12-voice-image-*
+          path: ${{ runner.temp }}/teleagent-v12-voice-images
+      - name: Compare every byte of independently built images
+        shell: bash
+        run: |
+          set -euo pipefail
+          first="$RUNNER_TEMP/teleagent-v12-voice-images/unsigned-v12-voice-image-1/teleagent-v12-voice-image.docker.tar"
+          second="$RUNNER_TEMP/teleagent-v12-voice-images/unsigned-v12-voice-image-2/teleagent-v12-voice-image.docker.tar"
+          test -s "$first"
+          test -s "$second"
+          cmp --silent "$first" "$second"
+          sha256sum "$first" "$second"
+          echo 'Two unsigned hosted voice image replicas match; releaseApproved=false.'

@@ -170,6 +170,19 @@ def native_dependencies(tar_path, observation_path, release):
                 copy_member(member, archive, destination)
                 copied += 1
     need(copied >= 100, 'host dependency extraction is incomplete')
+    old_native = release / ('realtime-sip-gateway/node_modules/better-sqlite3/'
+                            'build/Release/better_sqlite3.node')
+    new_native = release / ('realtime-sip-gateway/node_modules/better-sqlite3/'
+                            'prebuilds/linux-x64.node')
+    need(file_sha256(old_native) ==
+         'f441cb347cd61f73faa62f14cbfeb3c3fb62524bfbb97f3208f79360a95ddc37' and
+         not new_native.exists() and new_native.parent.is_dir(),
+         'reviewed realtime SQLite binary projection differs')
+    shutil.copyfile(old_native, new_native)
+    new_native.chmod(0o444)
+    need(file_sha256(new_native) == file_sha256(old_native),
+         'realtime SQLite binary changed during projection')
+    old_native.unlink()
     return copied
 
 
@@ -253,6 +266,11 @@ def build(args):
     dependency_files = native_dependencies(args.glibc_tar, args.glibc_observation,
                                            release)
     syft = stage_fixed(args.fixed, work, release)
+    command([str(release / 'runtime/node/bin/node'), '--input-type=module', '-e',
+             'const {default: Database}=await import("better-sqlite3"); '
+             'const db=new Database(":memory:"); '
+             'db.exec("create table smoke(n integer)"); db.close();'],
+            cwd=release / 'realtime-sip-gateway')
     config_digest = stage_voice(args.voice_image, args.voice_sbom, release)
     support = args.app / 'scripts/release/ci_release_support.py'
     voice_manifest = release / 'artifacts/voice/voice-image.manifest.json'

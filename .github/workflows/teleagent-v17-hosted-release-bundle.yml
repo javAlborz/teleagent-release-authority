@@ -36,9 +36,9 @@ jobs:
           test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 20971520
           for row in \
             '35935470213 197be7276c00fb9d1eb89b4739eec6dcec9e6b14 feat/hosted-capacity-probe-20260923' \
-            '36231657531 cb963af2ee767a6f59999bdcf7893215da0f51b7 feat/teleagent-v17-release-authority-20260926' \
-            '36231806973 6f48f73010a1ec7399ccc6fbee86002c58492db3 feat/teleagent-v17-release-authority-20260926' \
-            '36231892254 0c9e3c64ee8e889f6ea84ecc32d42b4ef51fa542 feat/teleagent-v17-release-authority-20260926'; do
+            '36232444816 157948891b179b82118308356dd587d98954df1c feat/teleagent-v17-release-authority-20260926' \
+            '36232658164 30c310802aee107f985fa4d93ee5b60e9ff954cc feat/teleagent-v17-release-authority-20260926' \
+            '36232720033 ca80234f7a2681ee5a2d89f2c3026fc4a0fe0cef feat/teleagent-v17-release-authority-20260926'; do
             read -r run_id head expected_branch <<< "$row"
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
               --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
@@ -58,7 +58,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 52bda261c37993beedb58ae290c9e6a27d28a948
+          ref: 442e63facdd8affe20fd26161b70c648982d1002
           persist-credentials: false
           path: app
       - name: Bind checked-out source identities
@@ -66,8 +66,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C app rev-parse HEAD)" = 52bda261c37993beedb58ae290c9e6a27d28a948
-          test "$(git -C app show -s --format=%T HEAD)" = f47c54476f022816ba62ca3ed1379bf0ed804bab
+          test "$(git -C app rev-parse HEAD)" = 442e63facdd8affe20fd26161b70c648982d1002
+          test "$(git -C app show -s --format=%T HEAD)" = 2137ef3f3c6a33997c6fe14c5a56659f390084e6
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C app status --porcelain)"
       - name: Acquire fixed public provider and tool inputs as data
@@ -88,13 +88,13 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --pattern 'glibc-2.tar' --pattern 'glibc-2.json' \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 36231657531 --repo "$GITHUB_REPOSITORY" \
+          gh run download 36232444816 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-v17-voice-image-1 \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 36231806973 --repo "$GITHUB_REPOSITORY" \
+          gh run download 36232658164 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-v17-voice-sbom-1 \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
-          gh run download 36231892254 --repo "$GITHUB_REPOSITORY" \
+          gh run download 36232720033 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-v17-voice-image-scan \
             --dir "$RUNNER_TEMP/teleagent-release-inputs"
           test "$(find "$RUNNER_TEMP/teleagent-release-inputs" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 7

@@ -1,0 +1,128 @@
+name: Teleagent v26 hosted voice image fresh scan evidence
+
+on:
+  push:
+    branches:
+      - feat/teleagent-v26-release-authority-20260926
+    paths:
+      - .github/workflows/teleagent-v26-hosted-voice-scan.yml
+      - scripts/verify-v26-voice-scan.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  scan:
+    name: scan-fixed-unsigned-image-on-disposable-hosted-runner-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Require exact hosted context and pinned image build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/teleagent-v26-release-authority-20260926
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/36260248815" \
+            --jq '[.status,.conclusion,.head_sha,.head_branch,.run_attempt] | @tsv' \
+            | { read -r status conclusion head_sha branch attempt
+                test "$status" = completed
+                test "$conclusion" = success
+                test "$head_sha" = 2b729daab711edca350b6a21741ef87b52091a9b
+                test "$branch" = feat/teleagent-v26-release-authority-20260926
+                test "$attempt" = 1
+              }
+      - name: Retrieve fixed unsigned image archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/voice-image"
+          gh run download 36260248815 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-v26-voice-image-1 --dir "$RUNNER_TEMP/voice-image"
+          image="$RUNNER_TEMP/voice-image/teleagent-v26-voice-image.docker.tar"
+          test -f "$image"
+          printf '%s  %s\n' \
+            230d17107cdd0a8e51358f0b6ddcdea67631a7bc36fa5a1b432255fd852dcd74 \
+            "$image" | sha256sum --check --status
+      - name: Verify exact Trivy archive and contained executable bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-trivy"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 180 --output "$RUNNER_TEMP/teleagent-trivy/trivy.tar.gz" \
+            https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_Linux-64bit.tar.gz
+          test "$(stat -c %s "$RUNNER_TEMP/teleagent-trivy/trivy.tar.gz")" = 50352156
+          printf '%s  %s\n' \
+            bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea \
+            "$RUNNER_TEMP/teleagent-trivy/trivy.tar.gz" | sha256sum --check --status
+          tar -xOzf "$RUNNER_TEMP/teleagent-trivy/trivy.tar.gz" trivy > "$RUNNER_TEMP/teleagent-trivy/trivy"
+          printf '%s  %s\n' \
+            0e69edd134a3c338baa1a6806920773615d682b18cbc6a0cba2a3b658ef9b63e \
+            "$RUNNER_TEMP/teleagent-trivy/trivy" | sha256sum --check --status
+          chmod 0500 "$RUNNER_TEMP/teleagent-trivy/trivy"
+          "$RUNNER_TEMP/teleagent-trivy/trivy" --version
+      - name: Download current vulnerability database and scan unsigned image
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy="$RUNNER_TEMP/teleagent-trivy/trivy"
+          cache="$RUNNER_TEMP/teleagent-trivy/cache"
+          mkdir -m 0700 "$cache"
+          "$trivy" image --download-db-only --cache-dir "$cache" \
+            --disable-telemetry --no-progress
+          python3 -I - "$cache/db/metadata.json" <<'PY'
+          from datetime import datetime, timedelta, timezone
+          import json
+          import sys
+          from pathlib import Path
+          metadata = json.loads(Path(sys.argv[1]).read_bytes())
+          next_update = datetime.fromisoformat(metadata['NextUpdate'].replace('Z', '+00:00'))
+          assert next_update.tzinfo is not None
+          assert next_update > datetime.now(timezone.utc) + timedelta(hours=1)
+          print('Current Trivy DB NextUpdate:', next_update.isoformat())
+          PY
+          "$trivy" image \
+            --input "$RUNNER_TEMP/voice-image/teleagent-v26-voice-image.docker.tar" \
+            --scanners vuln,secret --severity HIGH,CRITICAL --offline-scan --skip-db-update --skip-java-db-update \
+            --skip-check-update --disable-telemetry --no-progress \
+            --cache-dir "$cache" --format json --exit-code 1 \
+            --output "$RUNNER_TEMP/teleagent-trivy/scan.json"
+          python3 -I scripts/verify-v26-voice-scan.py \
+            --image "$RUNNER_TEMP/voice-image/teleagent-v26-voice-image.docker.tar" \
+            --report "$RUNNER_TEMP/teleagent-trivy/scan.json" \
+            --metadata "$cache/db/metadata.json" \
+            > "$RUNNER_TEMP/teleagent-trivy/scan-check.json"
+          cp -- "$cache/db/metadata.json" "$RUNNER_TEMP/teleagent-trivy/db-metadata.json"
+          python3 -I - "$RUNNER_TEMP/teleagent-trivy" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          check = json.loads((root / 'scan-check.json').read_bytes())
+          metadata = (root / 'db-metadata.json').read_bytes()
+          assert hashlib.sha256(metadata).hexdigest() == check['databaseMetadataSha256']
+          PY
+          cat "$RUNNER_TEMP/teleagent-trivy/scan-check.json"
+      - name: Retain one-day diagnostic scan report for triage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-v26-voice-image-scan
+          path: |
+            ${{ runner.temp }}/teleagent-trivy/scan.json
+            ${{ runner.temp }}/teleagent-trivy/scan-check.json
+            ${{ runner.temp }}/teleagent-trivy/db-metadata.json
+          if-no-files-found: error
+          retention-days: 14

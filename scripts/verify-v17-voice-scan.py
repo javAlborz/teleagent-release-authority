@@ -12,8 +12,8 @@ from pathlib import Path
 import re
 import tarfile
 
-IMAGE_SHA256 = '20bcc11f92e8f26be6f7508df0ee1f2c8496d491fe7b850c9883020fe942e072'
-APP_REVISION = '52bda261c37993beedb58ae290c9e6a27d28a948'
+IMAGE_SHA256 = 'daba27c806f9e66c3489fe0a1338f21a3756ccb5db508e861da3783e6a665019'
+APP_REVISION = '442e63facdd8affe20fd26161b70c648982d1002'
 IMAGE_NAME = 'teleagent-v17-voice-image.docker.tar'
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 

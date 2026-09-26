@@ -24,6 +24,9 @@ PROVIDERS = (
     ('codex-x86_64-unknown-linux-musl.tar.gz',
      'https://github.com/openai/codex/releases/download/rust-v0.149.1/codex-x86_64-unknown-linux-musl.tar.gz',
      'e24fb784c7d71140d67afb620f56e9137496cf7f6c9e19217fa3666dcf306278', 99479490),
+    ('codex-code-mode-host-x86_64-unknown-linux-musl.tar.gz',
+     'https://github.com/openai/codex/releases/download/rust-v0.149.1/codex-code-mode-host-x86_64-unknown-linux-musl.tar.gz',
+     '62fa2c3e5d4bc58720bd72b2ee2ab8636e1aaa9d8236ddae41a1cce628b59aeb', 21210506),
 )
 HOSTS = {'nodejs.org', 'github.com', 'dl-cdn.alpinelinux.org', 'downloads.claude.ai'}
 REDIRECT_HOSTS = HOSTS | {'release-assets.githubusercontent.com', 'objects.githubusercontent.com'}

@@ -74,6 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -I -B authority/scripts/test_acquire_teleagent_fixed_inputs.py
           python3 -I authority/scripts/acquire-teleagent-fixed-inputs.py \
             --inputs "$GITHUB_WORKSPACE/authority/inputs/teleagent" \
             --output "$RUNNER_TEMP/teleagent-release-fixed"

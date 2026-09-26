@@ -133,8 +133,14 @@ def copy_pinned_index(inputs, digest, size, target):
                 need(count <= size, 'pinned index exceeds size')
                 sha.update(data)
                 output.write(data)
+            # Reading may update atime on a hosted runner. Bind content and
+            # mutation-relevant identity, never that access-only timestamp.
+            after = os.fstat(fd)
+            fields = ('st_dev', 'st_ino', 'st_mode', 'st_uid', 'st_gid',
+                      'st_nlink', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
             need(count == size and sha.hexdigest() == digest and
-                 os.fstat(fd) == before, 'pinned index bytes changed')
+                 all(getattr(before, key) == getattr(after, key) for key in fields),
+                 'pinned index bytes changed')
             output.flush()
             os.fsync(output.fileno())
     finally:

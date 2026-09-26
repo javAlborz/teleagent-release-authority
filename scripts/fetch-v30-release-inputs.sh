@@ -27,7 +27,7 @@ done <<'RUNS'
 36278917884 8420405dc03e88d2901fa53f43cc3da52b10a230 feat/teleagent-v30-release-authority-20260926 1 .github/workflows/teleagent-v30-hosted-voice-image.yml push
 36279001150 e922a9222233bb6dc062bcfd1dbd61bf3dae0d4d feat/teleagent-v30-release-authority-20260926 1 .github/workflows/teleagent-v30-hosted-voice-sbom.yml push
 36279060399 93db6631072fa5fd03b08f6d3caef6bf41dc1cd4 feat/teleagent-v30-release-authority-20260926 1 .github/workflows/teleagent-v30-hosted-voice-scan.yml push
-36275541695 c0f811e0e7ff9e8426b0ca6096b418c4f0dd27cd feat/teleagent-v30-release-authority-20260926 1 .github/workflows/teleagent-v30-hosted-release-bundle.yml push
+36279119921 55b4ed2397d7f07018d33b795e515f7a9f60f9af feat/teleagent-v30-release-authority-20260926 1 .github/workflows/teleagent-v30-hosted-release-bundle.yml push
 RUNS
 
 base="$RUNNER_TEMP/teleagent-v30-release-inputs"
@@ -39,9 +39,9 @@ mkdir -m 0700 -- "$base"
 for name in bundle-a bundle-b image scan; do
   mkdir -m 0700 -- "$base/$name"
 done
-gh run download 36275541695 --repo "$GITHUB_REPOSITORY" \
+gh run download 36279119921 --repo "$GITHUB_REPOSITORY" \
   --name unsigned-v30-release-bundle-1 --dir "$base/bundle-a"
-gh run download 36275541695 --repo "$GITHUB_REPOSITORY" \
+gh run download 36279119921 --repo "$GITHUB_REPOSITORY" \
   --name unsigned-v30-release-bundle-2 --dir "$base/bundle-b"
 gh run download 36278917884 --repo "$GITHUB_REPOSITORY" \
   --name unsigned-v30-voice-image-1 --dir "$base/image"

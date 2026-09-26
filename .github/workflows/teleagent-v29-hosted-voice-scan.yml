@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/teleagent-v29-hosted-voice-scan.yml
       - scripts/verify-v29-voice-scan.py
+      - scripts/verify-v29-voice-scan.py
   workflow_dispatch:
 
 permissions:

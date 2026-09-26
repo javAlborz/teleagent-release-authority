@@ -8,7 +8,7 @@ on:
       - .github/workflows/teleagent-v18-hosted-voice-image.yml
       - scripts/v18-voice-image-plan.py
       - scripts/project-v17-sqlite-napi.py
-      - scripts/test_project_v18_sqlite_napi.py
+      - scripts/test_project_v17_sqlite_napi.py
       - inputs/teleagent/sqlite-napi-v17.json
       - inputs/teleagent/source-pairs-v17-20260926.json
   workflow_dispatch:
@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -B -I authority/scripts/test_project_v18_sqlite_napi.py
+          python3 -B -I authority/scripts/test_project_v17_sqlite_napi.py
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C app rev-parse HEAD)" = bd40b6b64e63fa42e43dee7df179555bd51645cc
           test "$(git -C app show -s --format=%T HEAD)" = fb7c11a7a62f178547a042c86aba255ecbaf2790

@@ -1,0 +1,169 @@
+name: Teleagent v28 hosted unsigned release bundle replicas
+
+on:
+  push:
+    branches:
+      - feat/teleagent-v28-release-authority-20260926
+    paths:
+      - .github/workflows/teleagent-v28-hosted-release-bundle.yml
+      - scripts/assemble-v28-release-bundle.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  assemble:
+    name: assemble-unsigned-release-closure-${{ matrix.replica }}-no-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        replica: ['1', '2']
+    steps:
+      - name: Require exact hosted source and completed input evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "${RUNNER_ENVIRONMENT:-}" = github-hosted
+          test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
+          test "${GITHUB_REF:-}" = refs/heads/feat/teleagent-v28-release-authority-20260926
+          test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 20971520
+          for row in \
+            '35935470213 197be7276c00fb9d1eb89b4739eec6dcec9e6b14 feat/hosted-capacity-probe-20260923' \
+            '36271055964 224d35d8f6e9f0c029793f4375922695edf65a77 feat/teleagent-v28-release-authority-20260926' \
+            '36271376124 73553d70812843a63e9b76ac5d01d17505f2da59 feat/teleagent-v28-release-authority-20260926' \
+            '36271472211 a48eb66e8f1d5d998417796e55f7fb0836fd422e feat/teleagent-v28-release-authority-20260926'; do
+            read -r run_id head expected_branch <<< "$row"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+              --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
+              | { read -r status conclusion observed branch
+                  test "$status" = completed
+                  test "$conclusion" = success
+                  test "$observed" = "$head"
+                  test "$branch" = "$expected_branch"
+                }
+          done
+      - name: Read exact authority source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          path: authority
+      - name: Read exact patched application source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: javAlborz/teleagent
+          ref: cc0de4f31dd1de55c587dd0ee7448847df870fc9
+          persist-credentials: false
+          path: app
+      - name: Bind checked-out source identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C app rev-parse HEAD)" = cc0de4f31dd1de55c587dd0ee7448847df870fc9
+          test "$(git -C app show -s --format=%T HEAD)" = 4a516d42a434c136242dffdff440e75f15a27d93
+          test -z "$(git -C authority status --porcelain)"
+          test -z "$(git -C app status --porcelain)"
+      - name: Acquire fixed public provider and tool inputs as data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -I -B authority/scripts/test_acquire_teleagent_fixed_inputs.py
+          python3 -I authority/scripts/acquire-teleagent-fixed-inputs.py \
+            --inputs "$GITHUB_WORKSPACE/authority/inputs/teleagent" \
+            --output "$RUNNER_TEMP/teleagent-release-fixed"
+      - name: Retrieve exact unsigned build, image and SBOM data
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-release-inputs"
+          gh release download teleagent-native-materials-20260923 \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'glibc-2.tar' --pattern 'glibc-2.json' \
+            --dir "$RUNNER_TEMP/teleagent-release-inputs"
+          gh run download 36271055964 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-v28-voice-image-1 \
+            --dir "$RUNNER_TEMP/teleagent-release-inputs"
+          gh run download 36271376124 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-v28-voice-sbom-1 \
+            --dir "$RUNNER_TEMP/teleagent-release-inputs"
+          gh run download 36271472211 --repo "$GITHUB_REPOSITORY" \
+            --name unsigned-v28-voice-image-scan \
+            --dir "$RUNNER_TEMP/teleagent-release-inputs"
+          test "$(find "$RUNNER_TEMP/teleagent-release-inputs" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 7
+          python3 -I authority/scripts/verify-v28-voice-scan.py \
+            --image "$RUNNER_TEMP/teleagent-release-inputs/teleagent-v28-voice-image.docker.tar" \
+            --report "$RUNNER_TEMP/teleagent-release-inputs/scan.json" \
+            --metadata "$RUNNER_TEMP/teleagent-release-inputs/db-metadata.json" \
+            > "$RUNNER_TEMP/teleagent-release-inputs/scan-recheck.json"
+          cmp --silent "$RUNNER_TEMP/teleagent-release-inputs/scan-check.json" \
+            "$RUNNER_TEMP/teleagent-release-inputs/scan-recheck.json"
+      - name: Acquire exact N-API SQLite package inputs
+        shell: bash
+        run: |
+          python3 -I authority/scripts/project-v17-sqlite-napi.py \
+            --acquire "$RUNNER_TEMP/teleagent-v28-napi-inputs"
+      - name: Assemble and verify one deterministic unsigned release closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 "$RUNNER_TEMP/teleagent-release-work"
+          python3 -I authority/scripts/assemble-v28-release-bundle.py \
+            --app "$GITHUB_WORKSPACE/app" \
+            --fixed "$RUNNER_TEMP/teleagent-release-fixed" \
+            --glibc-tar "$RUNNER_TEMP/teleagent-release-inputs/glibc-2.tar" \
+            --glibc-observation "$RUNNER_TEMP/teleagent-release-inputs/glibc-2.json" \
+            --voice-image "$RUNNER_TEMP/teleagent-release-inputs/teleagent-v28-voice-image.docker.tar" \
+            --voice-sbom "$RUNNER_TEMP/teleagent-release-inputs/voice.cdx.json" \
+            --napi-inputs "$RUNNER_TEMP/teleagent-v28-napi-inputs" \
+            --work "$RUNNER_TEMP/teleagent-release-work" \
+            | tee "$RUNNER_TEMP/release-bundle-summary.json"
+          test -s "$RUNNER_TEMP/teleagent-release-work/teleagent-release.diagnostic.tar"
+          cp "$RUNNER_TEMP/release-bundle-summary.json" \
+            "$RUNNER_TEMP/teleagent-release-work/summary.json"
+          echo 'Unsigned release closure diagnostic completed; no promotion, signing or installation was authorized.'
+      - name: Retain only unsigned bundle and bounded summary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unsigned-v28-release-bundle-${{ matrix.replica }}
+          path: |
+            ${{ runner.temp }}/teleagent-release-work/teleagent-release.diagnostic.tar
+            ${{ runner.temp }}/teleagent-release-work/summary.json
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  compare:
+    name: compare-two-unsigned-release-closures-no-release
+    needs: assemble
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Read both unsigned release bundles
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v7.0.1
+        with:
+          pattern: unsigned-v28-release-bundle-*
+          path: ${{ runner.temp }}/teleagent-release-bundles
+      - name: Compare complete bundles and bound diagnostic summaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          first="$RUNNER_TEMP/teleagent-release-bundles/unsigned-v28-release-bundle-1"
+          second="$RUNNER_TEMP/teleagent-release-bundles/unsigned-v28-release-bundle-2"
+          test -s "$first/teleagent-release.diagnostic.tar"
+          test -s "$second/teleagent-release.diagnostic.tar"
+          cmp --silent "$first/teleagent-release.diagnostic.tar" \
+            "$second/teleagent-release.diagnostic.tar"
+          cmp --silent "$first/summary.json" "$second/summary.json"
+          sha256sum "$first/teleagent-release.diagnostic.tar" \
+            "$second/teleagent-release.diagnostic.tar"
+          cat "$first/summary.json"
+          echo 'Two unsigned closure diagnostics match; releaseApproved=false.'

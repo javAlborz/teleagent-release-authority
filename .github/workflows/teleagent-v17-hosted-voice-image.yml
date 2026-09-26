@@ -55,7 +55,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 52bda261c37993beedb58ae290c9e6a27d28a948
+          ref: 442e63facdd8affe20fd26161b70c648982d1002
           persist-credentials: false
           path: app
       - name: Bind source identities and render fixed offline recipe
@@ -64,9 +64,9 @@ jobs:
           set -euo pipefail
           python3 -B -I authority/scripts/test_project_v17_sqlite_napi.py
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C app rev-parse HEAD)" = 52bda261c37993beedb58ae290c9e6a27d28a948
-          test "$(git -C app show -s --format=%T HEAD)" = f47c54476f022816ba62ca3ed1379bf0ed804bab
-          test "$(git -C app show -s --format=%ct HEAD)" = 1790413394
+          test "$(git -C app rev-parse HEAD)" = 442e63facdd8affe20fd26161b70c648982d1002
+          test "$(git -C app show -s --format=%T HEAD)" = 2137ef3f3c6a33997c6fe14c5a56659f390084e6
+          test "$(git -C app show -s --format=%ct HEAD)" = 1790414356
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           python3 -I - <<'PY'
@@ -85,9 +85,9 @@ jobs:
           import runpy
           import sys
           source = runpy.run_path('authority/scripts/v17-voice-image-plan.py', run_name='v17_voice_recipe')
-          assert source['APP_REVISION'] == '52bda261c37993beedb58ae290c9e6a27d28a948'
-          assert source['APP_TREE'] == 'f47c54476f022816ba62ca3ed1379bf0ed804bab'
-          assert source['APP_EPOCH'] == 1790413394
+          assert source['APP_REVISION'] == '442e63facdd8affe20fd26161b70c648982d1002'
+          assert source['APP_TREE'] == '2137ef3f3c6a33997c6fe14c5a56659f390084e6'
+          assert source['APP_EPOCH'] == 1790414356
           assert source['MUSL_DEPENDENCY_TAR'] == '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f1636303655cfc925'
           Path(sys.argv[1]).write_text(source['dockerfile'](), encoding='ascii')
           PY
@@ -151,7 +151,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export SOURCE_DATE_EPOCH=1790413394
+          export SOURCE_DATE_EPOCH=1790414356
           builder="teleagent-v17-voice-${{ matrix.replica }}"
           trap 'docker buildx rm "$builder" >/dev/null 2>&1 || true' EXIT
           docker buildx create --name "$builder" --driver docker-container \
@@ -159,7 +159,7 @@ jobs:
             --bootstrap
           docker buildx build --builder "$builder" \
             --platform linux/amd64 --no-cache --network none --provenance=false \
-            --build-arg SOURCE_DATE_EPOCH=1790413394 \
+            --build-arg SOURCE_DATE_EPOCH=1790414356 \
             --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
             --build-context app="$GITHUB_WORKSPACE/app" \
             --build-context dependencies="$RUNNER_TEMP/teleagent-v17-musl-dependencies" \
@@ -171,7 +171,7 @@ jobs:
           docker load --input "$RUNNER_TEMP/teleagent-v17-voice-image.docker.tar"
           test "$(docker image inspect teleagent-v17-voice-diagnostic:20260926 \
             --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
-            52bda261c37993beedb58ae290c9e6a27d28a948
+            442e63facdd8affe20fd26161b70c648982d1002
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
             --user 10001:10001 --entrypoint node teleagent-v17-voice-diagnostic:20260926 \

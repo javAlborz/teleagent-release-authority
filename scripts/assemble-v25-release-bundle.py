@@ -200,7 +200,7 @@ def stage_fixed(fixed, work, release):
     providers = fixed / 'providers'
     node = release / 'runtime/node/bin/node'
     archive_binary(tools / NODE_ARCHIVE,
-                   'node-v25.19.0-linux-x64/bin/node', node,
+                   'node-v24.19.0-linux-x64/bin/node', node,
                    NODE_ARCHIVE, NODE_BINARY, 40_000_000, 150_000_000)
     claude = providers / 'claude-2.1.246'
     digest(claude, CLAUDE_BINARY, 300_000_000)

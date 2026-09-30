@@ -273,9 +273,11 @@ def build(args):
                                            release)
     napi = runpy.run_path(str(Path(__file__).with_name('project-v17-sqlite-napi.py')),
                           run_name='fixed_napi_projection')
-    napi['project'](release, args.app, args.napi_inputs, 'glibc')
     ws = runpy.run_path(str(Path(__file__).with_name('project-v50-controller-ws.py')), run_name='fixed_ws_projection')
     ws['project'](args.ws_archive, release)
+    # The retained N-API projection validates every lockfile dependency.
+    # Supply the separately verified ws addition before that full inventory check.
+    napi['project'](release, args.app, args.napi_inputs, 'glibc')
     dependency_files = sum(1 for component in PACKAGE_ROOTS
                            for path in (release / component / 'node_modules').rglob('*')
                            if path.is_file())

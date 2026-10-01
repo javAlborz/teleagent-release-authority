@@ -4,13 +4,14 @@ import hashlib
 import json
 import sys
 
-APP_REVISION = '75d96f329740befda07e8c0d9387851aceda6f06'
-APP_TREE = '15b042e56229619c9a6fe5488ff2faa0efac2852'
-APP_EPOCH = 1790857855
+APP_REVISION = '70959ce2051cdcf072df76a0ada925fac81a9faf'
+APP_TREE = 'a1d80fc72bcafdbd95296d5f801c0fc08c8b168d'
+APP_EPOCH = 1790858509
 MATERIAL_PLAN = '9eb9d2a625817ce9b08107bc6a864d159084aff33bbbb31ddf9e0192647f0ff8'
 VOICE_BASE = '2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43'
 MUSL_DEPENDENCY_SUBJECT = 'd5645fa7e268a92f5e9c2442d9c68f70a1ace456e44e81190047b028fe8ce7cb'
 MUSL_DEPENDENCY_TAR = '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f1636303655cfc925'
+AXIOS_ARCHIVE_SHA256 = '5aa2dc9a5d6ced926e4b6ca8ef8e0253b118867e240db8650c49379e972c12ac'
 APK_PACKAGES = ('libcrypto3=3.5.8-r0', 'libssl3=3.5.8-r0')
 PLAN_SCHEMA = 'teleagent.offline-voice-image-plan.v53'
 
@@ -90,6 +91,7 @@ def build_plan(epoch, material_plan_sha256, app_tree):
             'materialPlanSha256': MATERIAL_PLAN, 'voiceBaseDigest': VOICE_BASE,
             'muslDependencySubjectSha256': MUSL_DEPENDENCY_SUBJECT,
             'muslDependencyTarSha256': MUSL_DEPENDENCY_TAR,
+            'axiosArchiveSha256': AXIOS_ARCHIVE_SHA256,
             'apkPackages': list(APK_PACKAGES), 'sourceEpoch': APP_EPOCH,
             'expectedRunCount': 1, 'network': 'none',
             'generatedFiles': [{'path': name, 'sha256': sha(body.encode('ascii')), 'content': body}

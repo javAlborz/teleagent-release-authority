@@ -9,8 +9,11 @@ on:
       - scripts/v53-voice-image-plan.py
       - scripts/project-v17-sqlite-napi.py
       - scripts/test_project_v17_sqlite_napi.py
+      - scripts/project-v53-voice-axios.py
+      - scripts/test_project_v53_voice_axios.py
+      - inputs/teleagent/voice-axios-v53.json
       - inputs/teleagent/sqlite-napi-v17.json
-      - inputs/teleagent/source-pairs-v50-20260930.json
+      - inputs/teleagent/source-pairs-v53-20261001.json
   workflow_dispatch:
 
 permissions:
@@ -55,7 +58,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: javAlborz/teleagent
-          ref: 75d96f329740befda07e8c0d9387851aceda6f06
+          ref: 70959ce2051cdcf072df76a0ada925fac81a9faf
           persist-credentials: false
           path: app
       - name: Bind source identities and render fixed offline recipe
@@ -63,17 +66,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 -B -I authority/scripts/test_project_v17_sqlite_napi.py
+          python3 -B -I authority/scripts/test_project_v53_voice_axios.py
           test "$(git -C authority rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git -C app rev-parse HEAD)" = 75d96f329740befda07e8c0d9387851aceda6f06
-          test "$(git -C app show -s --format=%T HEAD)" = 15b042e56229619c9a6fe5488ff2faa0efac2852
-          test "$(git -C app show -s --format=%ct HEAD)" = 1790857855
+          test "$(git -C app rev-parse HEAD)" = 70959ce2051cdcf072df76a0ada925fac81a9faf
+          test "$(git -C app show -s --format=%T HEAD)" = a1d80fc72bcafdbd95296d5f801c0fc08c8b168d
+          test "$(git -C app show -s --format=%ct HEAD)" = 1790858509
           test -z "$(git -C authority status --porcelain)"
           test -z "$(git -C app status --porcelain)"
           python3 -I - <<'PY'
           import hashlib, json
           from pathlib import Path
-          record = Path('authority/inputs/teleagent/source-pairs-v50-20260930.json')
-          assert hashlib.sha256(record.read_bytes()).hexdigest() == 'd577efc2b88f666b0a65d6700bfcf5b65b11c66e0d1ef4c1120ace8bb0f86db5'
+          record = Path('authority/inputs/teleagent/source-pairs-v53-20261001.json')
+          assert hashlib.sha256(record.read_bytes()).hexdigest() == '0ddb1678b5730db4056a6540d3011d7180b45b34b39de142e73e5594dca8dc5e'
           pairs = json.loads(record.read_bytes())
           assert len(pairs) == 12
           for row in pairs:
@@ -85,9 +89,9 @@ jobs:
           import runpy
           import sys
           source = runpy.run_path('authority/scripts/v53-voice-image-plan.py', run_name='v53_voice_recipe')
-          assert source['APP_REVISION'] == '75d96f329740befda07e8c0d9387851aceda6f06'
-          assert source['APP_TREE'] == '15b042e56229619c9a6fe5488ff2faa0efac2852'
-          assert source['APP_EPOCH'] == 1790857855
+          assert source['APP_REVISION'] == '70959ce2051cdcf072df76a0ada925fac81a9faf'
+          assert source['APP_TREE'] == 'a1d80fc72bcafdbd95296d5f801c0fc08c8b168d'
+          assert source['APP_EPOCH'] == 1790858509
           assert source['MUSL_DEPENDENCY_TAR'] == '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f1636303655cfc925'
           Path(sys.argv[1]).write_text(source['dockerfile'](), encoding='ascii')
           PY
@@ -110,10 +114,15 @@ jobs:
             --tar "$RUNNER_TEMP/teleagent-v53-musl-inputs/musl-1.tar" \
             --observation "$RUNNER_TEMP/teleagent-v53-musl-inputs/musl-1.json" \
             --destination "$RUNNER_TEMP/teleagent-v53-musl-dependencies"
-      - name: Project verified N-API SQLite packages into the unsigned musl tree
+      - name: Project verified Axios and N-API SQLite packages into the unsigned musl tree
         shell: bash
         run: |
           set -euo pipefail
+          python3 -I authority/scripts/project-v53-voice-axios.py \
+            --acquire --archive "$RUNNER_TEMP/teleagent-v53-axios.tgz"
+          python3 -I authority/scripts/project-v53-voice-axios.py \
+            --archive "$RUNNER_TEMP/teleagent-v53-axios.tgz" \
+            --root "$RUNNER_TEMP/teleagent-v53-musl-dependencies" --app "$GITHUB_WORKSPACE/app"
           python3 -I authority/scripts/project-v17-sqlite-napi.py \
             --acquire "$RUNNER_TEMP/teleagent-v53-napi-inputs"
           python3 -I authority/scripts/project-v17-sqlite-napi.py \
@@ -151,7 +160,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export SOURCE_DATE_EPOCH=1790857855
+          export SOURCE_DATE_EPOCH=1790858509
           builder="teleagent-v53-voice-${{ matrix.replica }}"
           trap 'docker buildx rm "$builder" >/dev/null 2>&1 || true' EXIT
           docker buildx create --name "$builder" --driver docker-container \
@@ -159,7 +168,7 @@ jobs:
             --bootstrap
           docker buildx build --builder "$builder" \
             --platform linux/amd64 --no-cache --network none --provenance=false \
-            --build-arg SOURCE_DATE_EPOCH=1790857855 \
+            --build-arg SOURCE_DATE_EPOCH=1790858509 \
             --build-context voice-base=docker-image://node:24-alpine@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43 \
             --build-context app="$GITHUB_WORKSPACE/app" \
             --build-context dependencies="$RUNNER_TEMP/teleagent-v53-musl-dependencies" \
@@ -171,7 +180,7 @@ jobs:
           docker load --input "$RUNNER_TEMP/teleagent-v53-voice-image.docker.tar"
           test "$(docker image inspect teleagent-v53-voice-diagnostic:20260926 \
             --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = \
-            75d96f329740befda07e8c0d9387851aceda6f06
+            70959ce2051cdcf072df76a0ada925fac81a9faf
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --pids-limit 64 --memory 512m \
             --user 10001:10001 --entrypoint node teleagent-v53-voice-diagnostic:20260926 \

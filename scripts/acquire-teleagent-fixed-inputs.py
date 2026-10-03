@@ -150,7 +150,8 @@ def copy_pinned_index(inputs, digest, size, target):
         os.close(fd)
 
 
-def acquire(inputs, output):
+def acquire(inputs, output, *, purpose='all'):
+    need(purpose in ('all', 'release'), 'unknown acquisition purpose')
     need(os.geteuid() != 0 and inputs.is_absolute() and output.is_absolute() and
          output.parent.is_dir(), 'unprivileged absolute paths required')
     records = {name: manifest(inputs, name) for name in PINS}
@@ -190,6 +191,11 @@ def acquire(inputs, output):
     need(len(all_names) == len(set(all_names)) and
          sum(item[3] for items in rows.values() for item in items) <= MAX_TOTAL,
          'duplicate or oversized acquisition')
+    if purpose == 'release':
+        # Bundle assembly consumes already-built, independently verified native
+        # artifacts. It uses only the runtime/scanner tools and provider files;
+        # compiler APKs, package indexes and BuildKit belong to native builds.
+        rows = {kind: rows[kind] for kind in ('tools', 'providers')}
     output.mkdir(mode=0o700)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), Redirects())
     deadline = time.monotonic() + 1800
@@ -214,9 +220,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inputs', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--purpose', choices=('all', 'release'), default='all')
     args = parser.parse_args()
     os.umask(0o077)
-    print(json.dumps(acquire(args.inputs, args.output), sort_keys=True))
+    print(json.dumps(acquire(args.inputs, args.output, purpose=args.purpose), sort_keys=True))
 
 
 if __name__ == '__main__':

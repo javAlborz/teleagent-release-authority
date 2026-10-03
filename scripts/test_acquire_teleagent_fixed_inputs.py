@@ -1,6 +1,8 @@
 #!/usr/bin/python3 -I
 """Exercise index copy integrity without network access or large inputs."""
 import hashlib
+import contextlib
+import io
 import importlib.util
 import os
 from pathlib import Path
@@ -71,6 +73,41 @@ class IndexCopyTests(unittest.TestCase):
         self.source.hardlink_to(original)
         with self.assertRaisesRegex(ValueError, 'metadata differs'):
             self.copy()
+
+
+class AcquisitionPurposeTests(unittest.TestCase):
+    def acquire(self, purpose):
+        inputs = Path(__file__).resolve().parents[1] / 'inputs/teleagent'
+        requests = []
+        with tempfile.TemporaryDirectory() as folder:
+            destination = Path(folder) / 'output'
+            def download(_opener, url, digest, size, target, _deadline):
+                requests.append((target.parent.name, target.name, url, digest, size))
+            with patch.object(module, 'download', side_effect=download), \
+                    patch.object(module, 'copy_pinned_index'), \
+                    patch.object(module.os, 'geteuid', return_value=1000), \
+                    patch.object(module.shutil, 'disk_usage', return_value=types.SimpleNamespace(free=4 * module.MAX_TOTAL)), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                result = module.acquire(inputs, destination, purpose=purpose)
+            groups = {p.name for p in destination.iterdir()}
+            return requests, groups, result
+
+    def test_release_omits_build_only_downloads_without_changing_used_input_pins(self):
+        full, full_groups, _ = self.acquire('all')
+        release, groups, result = self.acquire('release')
+        self.assertEqual(full_groups, {'tools', 'engine', 'indexes', 'apk', 'providers'})
+        self.assertEqual(groups, {'tools', 'providers'})
+        self.assertEqual(release, [r for r in full if r[0] in groups])
+        self.assertEqual(len(release), 6)
+        self.assertEqual(result['downloadedBytes'], sum(r[4] for r in release))
+        self.assertFalse(result['executablesRun'])
+        self.assertTrue(any(r[0] == 'apk' for r in full))
+
+    def test_unknown_purpose_refuses_before_any_download(self):
+        with patch.object(module, 'download') as download:
+            with self.assertRaisesRegex(ValueError, 'unknown acquisition purpose'):
+                module.acquire(Path('/unused'), Path('/unused-output'), purpose='unchecked')
+            download.assert_not_called()
 
 
 if __name__ == '__main__':

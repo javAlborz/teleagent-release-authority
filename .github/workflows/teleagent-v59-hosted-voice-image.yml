@@ -145,10 +145,10 @@ jobs:
             '0134bc50ab7ac75bf593d035e6278a365e8d83a6157f685b3ffe5e78985f9dd3  '"$apk"'/community/x86_64/APKINDEX.tar.gz' \
             | sha256sum --check --status
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-            --max-time 120 --output "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk" \
+            --retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 180 --max-time 120 --output "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk" \
             https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libcrypto3-3.5.8-r0.apk
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-            --max-time 120 --output "$apk/main/x86_64/libssl3-3.5.8-r0.apk" \
+            --retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 180 --max-time 120 --output "$apk/main/x86_64/libssl3-3.5.8-r0.apk" \
             https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/libssl3-3.5.8-r0.apk
           test "$(stat -c %s "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk")" = 1978546
           test "$(stat -c %s "$apk/main/x86_64/libssl3-3.5.8-r0.apk")" = 379265

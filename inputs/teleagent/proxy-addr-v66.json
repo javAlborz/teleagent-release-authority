@@ -1,0 +1,16 @@
+{
+  "name": "proxy-addr",
+  "version": "2.0.8",
+  "url": "https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.8.tgz",
+  "integrity": "sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==",
+  "sha256": "ffcc8055b78b0852b2889a426ad3a3003b60bc79df704faca194157efa2b2587",
+  "components": [
+    "claude-api-server",
+    "voice-app"
+  ],
+  "dependencies": {
+    "forwarded": "0.2.0",
+    "ipaddr.js": "1.9.1"
+  },
+  "advisory": "GHSA-jqcg-44mw-7w3h"
+}

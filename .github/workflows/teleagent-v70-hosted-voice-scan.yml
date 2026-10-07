@@ -33,12 +33,12 @@ jobs:
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/feat/teleagent-v70-release-authority-20261007
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/37610564193" \
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/37645625860" \
             --jq '[.status,.conclusion,.head_sha,.head_branch,.run_attempt] | @tsv' \
             | { read -r status conclusion head_sha branch attempt
                 test "$status" = completed
                 test "$conclusion" = success
-                test "$head_sha" = 51ac55432e4bc7aaae36368e82f36270e3f33483
+                test "$head_sha" = 217d858482ed28fa0a8916c3923b2cc07ab46181
                 test "$branch" = feat/teleagent-v70-release-authority-20261007
                 test "$attempt" = 1
               }
@@ -49,12 +49,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/voice-image"
-          gh run download 37610564193 --repo "$GITHUB_REPOSITORY" \
+          gh run download 37645625860 --repo "$GITHUB_REPOSITORY" \
             --name unsigned-v70-voice-image-1 --dir "$RUNNER_TEMP/voice-image"
           image="$RUNNER_TEMP/voice-image/teleagent-v70-voice-image.docker.tar"
           test -f "$image"
           printf '%s  %s\n' \
-            d54bfb541ad34146d8b6adf3db5381676e947f48c373f6c3775d3582bdf5b344 \
+            a952c85a3939e9debdcf8e07dbf688edf8f99a4aa448e5ee1d95e5dbe1643a61 \
             "$image" | sha256sum --check --status
       - name: Verify exact Trivy archive and contained executable bytes
         shell: bash

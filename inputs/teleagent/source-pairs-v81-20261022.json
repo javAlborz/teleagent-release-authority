@@ -1,0 +1,50 @@
+[
+  {
+    "path": "claude-api-server/package-lock.json",
+    "sha256": "cee1c0338140e88217330f9fa644a230c9daeadf2865085ef49226ecdacd235d"
+  },
+  {
+    "path": "claude-api-server/package.json",
+    "sha256": "9edda24e99ed9d2f897a763764be881c4b46e80ce9ff58b1e22d4865644676b8"
+  },
+  {
+    "path": "cli/package-lock.json",
+    "sha256": "9a84e16c1b0e52603035a750eacf57fcce468d9ffd90feadc4285ce1cbb985e7"
+  },
+  {
+    "path": "cli/package.json",
+    "sha256": "437c0920e1549d0aeae100b434761f823f76ca1dc30ef13ca90d24d65be2ca17"
+  },
+  {
+    "path": "package-lock.json",
+    "sha256": "10f8a3ed643a56f51351f8938effd202fa64d882a9a56d9ccea0a374ef471090"
+  },
+  {
+    "path": "package.json",
+    "sha256": "925653ecba478786a9991e5f178e222fa735deb06fea8c3a49b46bed036f6ee1"
+  },
+  {
+    "path": "privileged-action-broker/package-lock.json",
+    "sha256": "eae5c001cabc5b0b4706d3a90f1e135bd1cdebbccf59d7659d4a7bb3de80d839"
+  },
+  {
+    "path": "privileged-action-broker/package.json",
+    "sha256": "f4dff77b5a88351a5517c17aecca4beba834c72736262ba83ec5305a58ba1cd6"
+  },
+  {
+    "path": "realtime-sip-gateway/package-lock.json",
+    "sha256": "1dcf8d3051f439640dd4e83fe6f8fd17c5197f62181e34a4eb493a3668fe0a23"
+  },
+  {
+    "path": "realtime-sip-gateway/package.json",
+    "sha256": "f68dc3b3f9052ebe7d2ac7b0e2f26c63cf277e69d042251a4020d4a41a6ee45a"
+  },
+  {
+    "path": "voice-app/package-lock.json",
+    "sha256": "60c39798482b1bc8f49bc23a1599d6276096effd2784041335f82bf9843909f7"
+  },
+  {
+    "path": "voice-app/package.json",
+    "sha256": "4d99008c948f850e3ad00760aa1dcb2ab10d19cbca6f61946488b564844c0206"
+  }
+]

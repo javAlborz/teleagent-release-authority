@@ -1,0 +1,15 @@
+{
+  "name": "follow-redirects",
+  "version": "1.16.1",
+  "url": "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.16.1.tgz",
+  "integrity": "sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==",
+  "sha256": "6e075d999dc5ff568916954508397b11a537b18bde615986d7bd8b3d3fa1799f",
+  "components": [
+    "voice-app"
+  ],
+  "dependencies": {},
+  "advisories": [
+    "GHSA-q3jh-wrc6-jgq8",
+    "GHSA-8r9p-f939-6h3c"
+  ]
+}

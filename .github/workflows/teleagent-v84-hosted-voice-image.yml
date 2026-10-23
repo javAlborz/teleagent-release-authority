@@ -7,6 +7,8 @@ on:
     paths:
       - .github/workflows/teleagent-v84-hosted-voice-image.yml
       - scripts/v84-voice-image-plan.py
+      - scripts/stage-v84-runtime-apks.py
+      - inputs/teleagent/runtime-apk-v84.json
       - scripts/project-v81-follow-redirects.py
       - scripts/test_project_v81_follow_redirects.py
       - inputs/teleagent/follow-redirects-v81.json
@@ -147,33 +149,19 @@ jobs:
             --root "$RUNNER_TEMP/teleagent-v84-musl-dependencies" \
             --app "$GITHUB_WORKSPACE/app" \
             --inputs "$RUNNER_TEMP/teleagent-v84-napi-inputs" --target musl
-      - name: Stage fixed signed-index local Alpine packages
+      - name: Stage fixed signed-index Alpine runtime security updates
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          apk="$RUNNER_TEMP/teleagent-v84-apk-materials/apk"
-          mkdir -p "$apk/main/x86_64" "$apk/community/x86_64"
-          install -m 0444 authority/inputs/teleagent/index-objects/c1cbca81ade3696886de11a5f02777fe185ccba525edd58403e29b08050993a1 \
-            "$apk/main/x86_64/APKINDEX.tar.gz"
-          install -m 0444 authority/inputs/teleagent/index-objects/0134bc50ab7ac75bf593d035e6278a365e8d83a6157f685b3ffe5e78985f9dd3 \
-            "$apk/community/x86_64/APKINDEX.tar.gz"
-          printf '/materials/apk/main\n/materials/apk/community\n' > "$apk/repositories"
-          printf '%s\n' \
-            'c1cbca81ade3696886de11a5f02777fe185ccba525edd58403e29b08050993a1  '"$apk"'/main/x86_64/APKINDEX.tar.gz' \
-            '0134bc50ab7ac75bf593d035e6278a365e8d83a6157f685b3ffe5e78985f9dd3  '"$apk"'/community/x86_64/APKINDEX.tar.gz' \
-            | sha256sum --check --status
-          gh release download teleagent-pinned-apk-materials-20261004 \
+          source="$RUNNER_TEMP/teleagent-v84-apk-inputs"
+          mkdir -m 0700 "$source"
+          gh release download teleagent-pinned-apk-materials-20261023 \
             --repo javAlborz/teleagent-release-authority \
-            --pattern libcrypto3-3.5.8-r0.apk --pattern libssl3-3.5.8-r0.apk \
-            --dir "$apk/main/x86_64"
-          test "$(stat -c %s "$apk/main/x86_64/libcrypto3-3.5.8-r0.apk")" = 1978546
-          test "$(stat -c %s "$apk/main/x86_64/libssl3-3.5.8-r0.apk")" = 379265
-          printf '%s\n' \
-            '161223a16f042b8e469e9441291e071464fd91d4f4bbe6f496ee8d0abd4e0701  '"$apk"'/main/x86_64/libcrypto3-3.5.8-r0.apk' \
-            'aca521e5ae4a321322a9d47ed64a1775f5ab1ffd215d1e9fc0433c58f7bfd037  '"$apk"'/main/x86_64/libssl3-3.5.8-r0.apk' \
-            | sha256sum --check --status
+            --pattern APKINDEX.tar.gz --pattern '*.apk' --dir "$source"
+          python3 -I -B authority/scripts/stage-v84-runtime-apks.py \
+            --source "$source" --destination "$RUNNER_TEMP/teleagent-v84-apk-materials"
       - name: Build one unsigned network-disconnected voice image
         shell: bash
         run: |

@@ -14,7 +14,9 @@ MUSL_DEPENDENCY_TAR = '7f5f674aa3c1fb890747e9f8b3dc3c68e9e80633b969dc8f163630365
 AXIOS_ARCHIVE_SHA256 = '5aa2dc9a5d6ced926e4b6ca8ef8e0253b118867e240db8650c49379e972c12ac'
 PROXY_ADDR_ARCHIVE_SHA256 = 'ffcc8055b78b0852b2889a426ad3a3003b60bc79df704faca194157efa2b2587'
 FOLLOW_REDIRECTS_ARCHIVE_SHA256 = '6e075d999dc5ff568916954508397b11a537b18bde615986d7bd8b3d3fa1799f'
-APK_PACKAGES = ('libcrypto3=3.5.8-r0', 'libssl3=3.5.8-r0')
+APK_PACKAGES = ('ca-certificates-bundle=20261020-r0', 'libcrypto3=3.5.9-r0',
+                'libssl3=3.5.9-r0', 'musl=1.2.6-r3', 'musl-utils=1.2.6-r3',
+                'zlib=1.3.2-r1')
 PLAN_SCHEMA = 'teleagent.offline-voice-image-plan.v84'
 
 

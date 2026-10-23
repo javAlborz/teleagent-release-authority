@@ -12,10 +12,13 @@ from pathlib import Path
 import re
 import tarfile
 
-IMAGE_SHA256 = 'eb8927942be2e1eab9fd8f9daae44cdb39216fe6caab8016948cf525e794601e'
+IMAGE_SHA256 = 'c5c4da9525e938941353a91ab64c8db0c3effacc62a222f93f6d0235047c3648'
 APP_REVISION = '170a230cf1f11c58a4f4be8c4ac458dbaa8037e3'
 IMAGE_NAME = 'teleagent-v84-voice-image.docker.tar'
 HEX = re.compile(r'[0-9a-f]{64}\Z')
+RUNTIME_PACKAGES = {'ca-certificates-bundle': '20261020-r0', 'libcrypto3': '3.5.9-r0',
+                    'libssl3': '3.5.9-r0', 'musl': '1.2.6-r3',
+                    'musl-utils': '1.2.6-r3', 'zlib': '1.3.2-r1'}
 
 
 def need(condition, message):
@@ -29,7 +32,33 @@ def read_json(path, maximum):
     return json.loads(path.read_bytes())
 
 
+def verify_scanner_log(path):
+    need(path.is_file() and not path.is_symlink() and
+         0 < path.stat().st_size <= 1_000_000, 'scanner diagnostic log absent or oversized')
+    data = path.read_bytes()
+    allowed = (
+        'This OS version is not on the EOL list\tfamily="alpine" version="3.24"',
+        'Using severities from other vendors for some vulnerabilities. Read '
+        'https://trivy.dev/docs/v0.72/guide/scanner/vulnerability#severity-selection for details.',
+    )
+    for line in data.decode('utf-8', errors='strict').splitlines():
+        need('\tERROR\t' not in line and '\tFATAL\t' not in line,
+             'scanner diagnostic error present')
+        if '\tWARN\t' in line:
+            need(line.split('\tWARN\t', 1)[1] in allowed,
+                 'unreviewed scanner warning; incomplete vulnerability details cannot pass')
+    return hashlib.sha256(data).hexdigest()
+
+
+def verify_runtime_packages(packages):
+    for name, version in RUNTIME_PACKAGES.items():
+        rows = [row for row in packages if row.get('Name') == name]
+        need(len(rows) == 1 and rows[0].get('Version') == version,
+             'runtime security package absent or version differs: ' + name)
+
+
 def verify(image, report_path, metadata_path, now):
+    log_sha = verify_scanner_log(report_path.with_name('scan.stderr.log'))
     need(image.is_file() and not image.is_symlink() and
          0 < image.stat().st_size <= 500_000_000, 'image size or type differs')
     with image.open('rb') as stream:
@@ -84,6 +113,7 @@ def verify(image, report_path, metadata_path, now):
          'alpine 3.24.1' in by_kind[('os-pkgs', 'alpine')]['Target'] and
          by_kind[('lang-pkgs', 'node-pkg')]['Target'] == 'Node.js',
          'scanner target identity differs')
+    verify_runtime_packages(by_kind[('os-pkgs', 'alpine')]['Packages'])
     qs = [row for row in by_kind[('lang-pkgs', 'node-pkg')]['Packages']
           if row.get('Name') == 'qs']
     need(len(qs) == 1 and qs[0].get('Version') == '6.16.0',
@@ -102,6 +132,8 @@ def verify(image, report_path, metadata_path, now):
             'authorization': 'diagnostic-only-no-release-authority',
             'imageSha256': image_digest,
             'reportSha256': hashlib.sha256(report_path.read_bytes()).hexdigest(),
+            'scannerLogSha256': log_sha,
+            'runtimeSecurityPackages': RUNTIME_PACKAGES,
             'databaseMetadataSha256': hashlib.sha256(metadata_path.read_bytes()).hexdigest(),
             'databaseNextUpdate': next_update.isoformat(),
             'targets': sorted([{'class': klass, 'type': kind,

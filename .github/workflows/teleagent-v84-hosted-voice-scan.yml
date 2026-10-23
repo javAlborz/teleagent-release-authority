@@ -7,7 +7,7 @@ on:
     paths:
       - .github/workflows/teleagent-v84-hosted-voice-scan.yml
       - scripts/verify-v84-voice-scan.py
-      - scripts/verify-v84-voice-scan.py
+      - scripts/test_verify_v84_voice_scan.py
   workflow_dispatch:
 
 permissions:
@@ -33,12 +33,12 @@ jobs:
           test "${RUNNER_ENVIRONMENT:-}" = github-hosted
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REF:-}" = refs/heads/fix/teleagent-v84-readback-authority-20261023
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/39978888313" \
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/39980843665" \
             --jq '[.status,.conclusion,.head_sha,.head_branch,.run_attempt] | @tsv' \
             | { read -r status conclusion head_sha branch attempt
                 test "$status" = completed
                 test "$conclusion" = success
-                test "$head_sha" = 04c51c9c8575f669e15d402cf46a016c1c74e888
+                test "$head_sha" = d9daa34bb1a34d3e002cf7b0f7cd2448b8863248
                 test "$branch" = fix/teleagent-v84-readback-authority-20261023
                 test "$attempt" = 1
               }
@@ -53,7 +53,7 @@ jobs:
           for attempt in 1 2 3; do
             attempt_dir="$RUNNER_TEMP/voice-image-attempt-$attempt"
             mkdir -m 0700 "$attempt_dir"
-            if timeout 180 gh run download 39978888313 --repo "$GITHUB_REPOSITORY" \
+            if timeout 180 gh run download 39980843665 --repo "$GITHUB_REPOSITORY" \
                 --name unsigned-v84-voice-image-2 --dir "$attempt_dir" \
                 2>"$RUNNER_TEMP/voice-image-attempt-$attempt.log"; then
               mv "$attempt_dir/teleagent-v84-voice-image.docker.tar" "$RUNNER_TEMP/voice-image/"
@@ -66,7 +66,7 @@ jobs:
           image="$RUNNER_TEMP/voice-image/teleagent-v84-voice-image.docker.tar"
           test -f "$image"
           printf '%s  %s\n' \
-            eb8927942be2e1eab9fd8f9daae44cdb39216fe6caab8016948cf525e794601e \
+            c5c4da9525e938941353a91ab64c8db0c3effacc62a222f93f6d0235047c3648 \
             "$image" | sha256sum --check --status
       - name: Verify exact Trivy archive and contained executable bytes
         shell: bash
@@ -90,6 +90,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 -I -B scripts/test_verify_v84_voice_scan.py
           trivy="$RUNNER_TEMP/teleagent-trivy/trivy"
           cache="$RUNNER_TEMP/teleagent-trivy/cache"
           mkdir -m 0700 "$cache"
@@ -111,7 +112,9 @@ jobs:
             --scanners vuln,secret --severity HIGH,CRITICAL --offline-scan --skip-db-update --skip-java-db-update \
             --skip-check-update --disable-telemetry --no-progress \
             --cache-dir "$cache" --format json --exit-code 1 \
-            --output "$RUNNER_TEMP/teleagent-trivy/scan.json"
+            --output "$RUNNER_TEMP/teleagent-trivy/scan.json" \
+            2>"$RUNNER_TEMP/teleagent-trivy/scan.stderr.log"
+          cat "$RUNNER_TEMP/teleagent-trivy/scan.stderr.log"
           python3 -I scripts/verify-v84-voice-scan.py \
             --image "$RUNNER_TEMP/voice-image/teleagent-v84-voice-image.docker.tar" \
             --report "$RUNNER_TEMP/teleagent-trivy/scan.json" \
@@ -158,6 +161,7 @@ jobs:
           name: unsigned-v84-voice-image-scan
           path: |
             ${{ runner.temp }}/teleagent-trivy/scan.json
+            ${{ runner.temp }}/teleagent-trivy/scan.stderr.log
             ${{ runner.temp }}/teleagent-trivy/scan-check.json
             ${{ runner.temp }}/teleagent-trivy/db-metadata.json
           if-no-files-found: error

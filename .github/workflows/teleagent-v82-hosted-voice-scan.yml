@@ -54,7 +54,7 @@ jobs:
             attempt_dir="$RUNNER_TEMP/voice-image-attempt-$attempt"
             mkdir -m 0700 "$attempt_dir"
             if timeout 180 gh run download 39930459862 --repo "$GITHUB_REPOSITORY" \
-                --name unsigned-v82-voice-image-1 --dir "$attempt_dir" \
+                --name unsigned-v82-voice-image-2 --dir "$attempt_dir" \
                 2>"$RUNNER_TEMP/voice-image-attempt-$attempt.log"; then
               mv "$attempt_dir/teleagent-v82-voice-image.docker.tar" "$RUNNER_TEMP/voice-image/"
               break

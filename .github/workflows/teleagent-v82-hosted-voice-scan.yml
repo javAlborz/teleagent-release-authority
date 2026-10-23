@@ -49,8 +49,20 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -m 0700 "$RUNNER_TEMP/voice-image"
-          gh run download 39930459862 --repo "$GITHUB_REPOSITORY" \
-            --name unsigned-v82-voice-image-1 --dir "$RUNNER_TEMP/voice-image"
+          # Retry only transport retrieval; every attempt uses the same pinned artifact.
+          for attempt in 1 2 3; do
+            attempt_dir="$RUNNER_TEMP/voice-image-attempt-$attempt"
+            mkdir -m 0700 "$attempt_dir"
+            if timeout 180 gh run download 39930459862 --repo "$GITHUB_REPOSITORY" \
+                --name unsigned-v82-voice-image-1 --dir "$attempt_dir" \
+                2>"$RUNNER_TEMP/voice-image-attempt-$attempt.log"; then
+              mv "$attempt_dir/teleagent-v82-voice-image.docker.tar" "$RUNNER_TEMP/voice-image/"
+              break
+            fi
+            echo "Fixed artifact download attempt $attempt failed."
+            test "$attempt" -lt 3 || exit 1
+            sleep 30
+          done
           image="$RUNNER_TEMP/voice-image/teleagent-v82-voice-image.docker.tar"
           test -f "$image"
           printf '%s  %s\n' \

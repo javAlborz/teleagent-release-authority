@@ -1,7 +1,8 @@
 # Teleagent release policy
 
-Status: **the first accepted release was superseded before Hermes selection;
-the corrected candidate awaits a new protected-main decision**.
+Current procedure: versioned protected-main release decisions implement the
+required evidence below. Historical candidate identities are dated observations.
+They do not establish current Hermes selection or acceptance.
 
 ## Repository identities
 
@@ -51,7 +52,7 @@ verifier must compare them to current authenticated metadata and bind an exact
    recovery controls, state migration, disabled install and attended handset
    acceptance remain separate gates.
 
-## Current release state
+## Historical release state, September 24
 
 Protected-main run `36033577203` signed and independently consumed the first
 exact release. Before Hermes selection, host integration found that its app
@@ -71,7 +72,7 @@ private offline build. Protected-main signing, independent consumption, Hermes
 approval pinning, disabled installation and live phone acceptance are still
 required. The live phone remains locked until those gates pass.
 
-## Current candidate selection, September 24
+## Historical candidate selection, September 24
 
 The corrected candidate is application revision
 `fd254f37a3017ad3475449987197706bbdbe7be7` and complete bundle
@@ -111,3 +112,29 @@ of the last push. A second human maintainer is not a prerequisite for a
 solo-owner project. This source-governance setting grants no signing or
 deployment authority: the two fresh isolated builds, exact comparison,
 separate signer and consuming verifier above remain mandatory.
+
+
+## V84 runtime package and scanner completeness, October 23
+
+The first V84 image and its nominal zero-finding scan are superseded and cannot
+be signed by the V84 decision. The scanner warned that vulnerability details for
+CVE-2026-107891 were unavailable; musl 1.2.6-r2 was actually affected. A scanner's
+success exit alone is insufficient evidence of a complete vulnerability check.
+
+The replacement uses Alpine 3.24 main/x86_64 signed index
+`e9f0f0546a3bad03fb189101c837cf96f61ea020213f096536587f572060d225`
+and six fixed runtime packages: musl/musl-utils 1.2.6-r3, libcrypto3/libssl3
+3.5.9-r0, zlib 1.3.2-r1 and ca-certificates-bundle 20261020-r0. Index and package
+RSA signatures were independently checked against the existing Alpine key
+`207e4696d3c05f7cb05966aee557307151f1f00217af4143c1bcaf33b8df733f`;
+package control checksums and signed data hashes also matched. Preserved public
+APK materials are data only, with exact SHA-256/size pins in the V84 manifest.
+The image install remains offline, with APK signature checking enabled.
+
+V84 scan verification requires those package versions even with no findings.
+It retains and hashes scanner stderr, refuses errors and unreviewed warnings,
+and rechecks that log during bundle assembly and protected signing. The known
+Alpine lifecycle-list and vendor-severity warnings are separately allowed exact
+messages; missing vulnerability details are never allowed. Runtime acceptance
+must independently read the running container package inventory. This correction
+makes no assertion that a real phone call exploited the library vulnerability.

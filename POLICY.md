@@ -138,3 +138,26 @@ Alpine lifecycle-list and vendor-severity warnings are separately allowed exact
 messages; missing vulnerability details are never allowed. Runtime acceptance
 must independently read the running container package inventory. This correction
 makes no assertion that a real phone call exploited the library vulnerability.
+
+## V85 request parsing patch, October 27
+
+V85 updates body-parser from 1.20.6 to 1.20.9 in both controller and voice locks
+for GHSA-27r3-jxmh-p828. The npm package URL, SHA-512 integrity, SHA-256 and exact
+dependency declarations are bound in `inputs/teleagent/body-parser-v85.json`.
+This uses the existing digest-pinned upstream-origin policy; no independent npm
+signature verification is claimed. Other package versions remain unchanged.
+
+The hosted-only projection verifies archive members, package metadata, the exact
+new application lock and the expected prior package before modifying its
+disposable dependency tree. It rejects links, traversal, install hooks and
+unreviewed dependency contents. Nested debug/ms package bytes remain intact;
+the subsequent full inventory check still validates every package version.
+The image smoke check and scanner inventory independently require body-parser
+1.20.9. All prior scanner warning, freshness, identity, signing and consuming
+checks remain enforced. A failed API retrieval may be retried a bounded number
+of times; mismatched build identities are never retried or substituted.
+
+Host staging must preserve the existing recovery capacity thresholds. Source
+tests, isolated model replays and hosted build evidence do not grant authority
+to discard retained artifacts, interrupt the live phone, or record handset
+acceptance. Use the coordinated host release and retention procedures.

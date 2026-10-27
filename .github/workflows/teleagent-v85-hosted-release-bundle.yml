@@ -44,14 +44,21 @@ jobs:
             '40519606599 9606a92f4dfa9ac5e09c73dc8a530fe8855963a0 fix/teleagent-v85-followups-authority-20261027' \
             '40519422756 14dbbd466818e984988e163468a3dba1bcd4d48b fix/teleagent-v85-followups-authority-20261027'; do
             read -r run_id head expected_branch <<< "$row"
-            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
-              --jq '[.status,.conclusion,.head_sha,.head_branch] | @tsv' \
-              | { read -r status conclusion observed branch
-                  test "$status" = completed
-                  test "$conclusion" = success
-                  test "$observed" = "$head"
-                  test "$branch" = "$expected_branch"
-                }
+            # Retry only failed read-only API retrieval, never an identity mismatch.
+            for retrieval in 1 2 3; do
+              if metadata="$(timeout 30 gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" \
+                --jq '[.status,.conclusion,.head_sha,.head_branch,.run_attempt] | @tsv')"; then
+                break
+              fi
+              test "$retrieval" -lt 3 || exit 1
+              sleep 5
+            done
+            read -r status conclusion observed branch attempt <<< "$metadata"
+            test "$status" = completed
+            test "$conclusion" = success
+            test "$observed" = "$head"
+            test "$branch" = "$expected_branch"
+            test "$attempt" = 1
           done
       - name: Read exact authority source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

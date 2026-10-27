@@ -8,7 +8,17 @@ software outcome, handset acceptance and retention remain separate host decision
 Use the matching versioned workflow and actual run evidence; this README never
 establishes live host state.
 
-The V84 candidate binds application main `170a230cf1f11c58a4f4be8c4ac458dbaa8037e3`
+The V85 candidate binds application main `6274bb9d23fa22de89011dc5059bd96e90359eea`.
+It repairs repeated history readback, speaks common emoji descriptions, and
+retains ambiguous caller additions for explicit continuation without duplicate
+delivery. Controller and voice dependencies include verified body-parser 1.20.9
+for GHSA-27r3-jxmh-p828. Hosted projections preserve nested dependencies and the
+full dependency inventory remains checked against the application locks.
+V85 retains V84's signed Alpine package inputs and scanner-completeness checks.
+Preparing this candidate does not install it, release retention holds, or establish
+handset acceptance; host capacity and coordinated deployment remain separate.
+
+The predecessor V84 candidate binds application main `170a230cf1f11c58a4f4be8c4ac458dbaa8037e3`
 and the six authenticated Alpine updates in `inputs/teleagent/runtime-apk-v84.json`.
 Its first unsigned image is superseded: a nominal zero-finding scan omitted
 CVE-2026-107891 details. The replacement verifies the corrected package inventory

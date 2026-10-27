@@ -1,0 +1,26 @@
+{
+  "name": "body-parser",
+  "version": "1.20.9",
+  "url": "https://registry.npmjs.org/body-parser/-/body-parser-1.20.9.tgz",
+  "integrity": "sha512-FISIQxV5u91Y9gvuFq3q/tA/qTqLJn3AhRcEvyozyhJTh5OBFFtv827AdHU7Rbyct4r+Ba1/99oFa1Y3yuFsdw==",
+  "sha256": "63ab36ef1112d4ef489bd9a55c72b8ee2aa42eb20a184190f60cbaf287cd9957",
+  "components": [
+    "claude-api-server",
+    "voice-app"
+  ],
+  "dependencies": {
+    "bytes": "~3.1.2",
+    "content-type": "~1.0.5",
+    "debug": "2.6.9",
+    "depd": "2.0.0",
+    "destroy": "~1.2.0",
+    "http-errors": "~2.0.1",
+    "iconv-lite": "~0.4.24",
+    "on-finished": "~2.4.1",
+    "qs": "~6.16.0",
+    "raw-body": "~2.5.3",
+    "type-is": "~1.6.18",
+    "unpipe": "~1.0.0"
+  },
+  "advisory": "GHSA-27r3-jxmh-p828"
+}

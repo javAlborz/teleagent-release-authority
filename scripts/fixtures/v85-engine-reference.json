@@ -1,0 +1,11 @@
+{
+  "schema": "teleagent.release-engine-reference.v1",
+  "version": 85,
+  "authorityRevision": "da7631a094d21dcf5dcec652eb489d0bf48725d0",
+  "files": {
+    "verify-v85-release-decision.py": "686e36016c202c2cbc2f0e6be3628e34bde4d3b600b9f64772cafd16a8a5a718",
+    "consume-v85-release-decision.py": "2df6c2c134945b69e792a8a5c3871aea8820b095c6419fb5cd9dbb3b8609473c",
+    "fetch-v85-release-inputs.sh": "4417e3de460e280767886e95f1b2c17d893f7612d869401b729b376985b0bac1",
+    "verify-v85-voice-scan.py": "e2e7add496eb666eea19c2acc79f841abe76d159852aaea2bdfde2321e0bb446"
+  }
+}

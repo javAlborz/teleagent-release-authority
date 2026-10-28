@@ -1,0 +1,76 @@
+name: Release maintenance validation
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/release_engine.py'
+      - 'scripts/release-tool.py'
+      - 'scripts/test_release_engine.py'
+      - 'scripts/check-release-parity.py'
+      - 'scripts/fixtures/*-engine-reference.json'
+      - 'scripts/verify-v85-release-decision.py'
+      - 'scripts/consume-v85-release-decision.py'
+      - 'scripts/fetch-v85-release-inputs.sh'
+      - 'scripts/verify-v85-voice-scan.py'
+      - 'inputs/teleagent/**'
+      - 'releases/**'
+      - '.github/workflows/release-maintenance-validation.yml'
+      - 'docs/MAINTAINING.md'
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Exact reviewed release record to compare with frozen verification
+        required: true
+        default: v85
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Shared release contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Test compatibility and refusal boundaries
+        run: python3 -I -B scripts/test_release_engine.py
+
+  replay:
+    name: Read-only comparison with frozen release evidence
+    if: github.event_name == 'workflow_dispatch'
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RELEASE_RECORD: ${{ inputs.release }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Validate the reviewed record and retrieve exact evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 -I -B scripts/release-tool.py --release "$RELEASE_RECORD" check
+          python3 -I -B scripts/release-tool.py --release "$RELEASE_RECORD" fetch \
+            --destination "$RUNNER_TEMP/release-maintenance-evidence"
+      - name: Compare real evidence without signing or installation
+        run: |
+          set -euo pipefail
+          python3 -I -B scripts/check-release-parity.py --release "$RELEASE_RECORD" \
+            --input "$RUNNER_TEMP/release-maintenance-evidence" | tee "$RUNNER_TEMP/parity.json"
+      - name: Retain only the small comparison receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-engine-parity
+          path: ${{ runner.temp }}/parity.json
+          if-no-files-found: error
+          retention-days: 30

@@ -8,6 +8,12 @@ software outcome, handset acceptance and retention remain separate host decision
 Use the matching versioned workflow and actual run evidence; this README never
 establishes live host state.
 
+Start new release work with [Maintaining the release authority](docs/MAINTAINING.md).
+The validated `releases/vN.json` record and shared `release-tool.py` replace
+per-version copying of decision, consumer and evidence-fetch logic for future
+adoptions. Existing signed workflows stay frozen; the read-only compatibility
+workflow checks the new implementation against real V85 evidence.
+
 The V85 candidate binds application main `6274bb9d23fa22de89011dc5059bd96e90359eea`.
 It repairs repeated history readback, speaks common emoji descriptions, and
 retains ambiguous caller additions for explicit continuation without duplicate

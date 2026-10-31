@@ -161,3 +161,33 @@ Host staging must preserve the existing recovery capacity thresholds. Source
 tests, isolated model replays and hosted build evidence do not grant authority
 to discard retained artifacts, interrupt the live phone, or record handset
 acceptance. Use the coordinated host release and retention procedures.
+
+## V86 groups and security packages, October 31
+
+V86 binds app main `749aed4ff49776a2bafbd686d6198deeef93b20f`, including
+personal tmux groups and sampled enrolled-session activity. Placement is
+informational and never changes native enrollment, permissions or delivery.
+Codex resume-launch association is not proof of its currently displayed thread.
+
+`inputs/teleagent/security-packages-v86.json` fixes qs 6.16.1 for controller
+and voice and follow-redirects 1.16.2 for voice. These replace the exact prior
+packages in disposable hosted dependency trees. SHA-256, npm SHA-512, package
+identity, dependency declarations, original version and current app lock must
+all agree. Archive paths, links, lifecycle hooks, unexpected components and
+replay refuse. No package scripts or dependency resolution run. The full
+dependency inventory, image smoke checks, SBOM and fresh scanner independently
+check the resulting package versions. The app CLI lock also pins 1.16.2 but is
+not a runtime dependency payload in the release bundle.
+
+V86 explicitly adopts the shared `release-tool.py` / `release_engine.py`
+verification and consuming checks with its reviewed `releases/v86.json` record.
+The protected signer still independently retrieves and rechecks both complete
+bundles, source-run identities and fresh scan; the isolated consumer must first
+cryptographically verify the exact protected-main signer, source revision,
+OIDC issuer and predicate. The shared consumer alone is not signature evidence.
+Image construction and scanner policy remain separately reviewed versioned
+sources. V85's original workflows, scripts and signed evidence remain unchanged.
+
+No signing decision authorizes storage expansion, hold release, production
+interruption or handset acceptance. Host staging and activation require their
+separate reviewed boundaries and current capacity evidence.

@@ -16,6 +16,8 @@ on:
       - 'releases/**'
       - '.github/workflows/release-maintenance-validation.yml'
       - 'docs/MAINTAINING.md'
+      - 'scripts/*v86*'
+      - '.github/workflows/teleagent-v86-*.yml'
   workflow_dispatch:
     inputs:
       release:
@@ -37,7 +39,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Test compatibility and refusal boundaries
-        run: python3 -I -B scripts/test_release_engine.py
+        run: |
+          python3 -I -B scripts/test_release_engine.py
+          python3 -I -B scripts/test_project_v86_security_packages.py
+          python3 -I -B scripts/test_verify_v86_voice_scan.py
 
   replay:
     name: Read-only comparison with frozen release evidence

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "qs",
+    "version": "6.16.1",
+    "previousVersion": "6.16.0",
+    "url": "https://registry.npmjs.org/qs/-/qs-6.16.1.tgz",
+    "integrity": "sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==",
+    "sha256": "bdb0e06e5cde7b4d7e0117faa678416bbc2c9287b0672c35c04da2b9de1d3cbf",
+    "components": [
+      "voice-app",
+      "claude-api-server"
+    ],
+    "dependencies": {
+      "es-define-property": "^1.0.1",
+      "side-channel": "^1.1.1"
+    }
+  },
+  {
+    "name": "follow-redirects",
+    "version": "1.16.2",
+    "previousVersion": "1.16.0",
+    "url": "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.16.2.tgz",
+    "integrity": "sha512-/kVP2U8z596Ia0gwFrwyIeo74ta5aVmSeU1FfAUMAmcEP5EP7zydmag3SLiN64NaRKef3lxsq7i/g7ltJQDGow==",
+    "sha256": "97926c99452df68ec21aa3d518101b6d93a803652d6e1e7d70b273a8930224c8",
+    "components": [
+      "voice-app"
+    ],
+    "dependencies": {}
+  }
+]

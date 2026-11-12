@@ -3,7 +3,7 @@ name: Teleagent v87 release decision
 on:
   push:
     branches:
-      - feat/teleagent-v87-lookup-release-20261112
+      - fix/teleagent-v87-consumer-20261112
     paths:
       - .github/workflows/teleagent-v87-release-decision.yml
       - releases/v87.json
@@ -32,7 +32,7 @@ jobs:
           test "${GITHUB_REPOSITORY:-}" = javAlborz/teleagent-release-authority
           test "${GITHUB_REPOSITORY_ID:-}" = 1383172221
           case "$GITHUB_REF" in
-            refs/heads/feat/teleagent-v87-lookup-release-20261112|refs/heads/main) ;;
+            refs/heads/fix/teleagent-v87-consumer-20261112|refs/heads/main) ;;
             *) exit 1 ;;
           esac
           test "$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')" -ge 5242880
@@ -45,6 +45,7 @@ jobs:
           python3 -I -B scripts/test_verify_v87_voice_scan.py
           python3 -I -B scripts/test_project_v86_security_packages.py
           python3 -I -B scripts/test_release_engine.py
+          python3 -I -B scripts/test_release_workflow_bindings.py
           python3 -I -B scripts/release-tool.py --release v87 check
       - name: Fetch pinned hosted evidence only
         shell: bash
@@ -183,7 +184,7 @@ jobs:
           release="$RUNNER_TEMP/teleagent-consumed-release"
           test "$(find "$release" -mindepth 1 -maxdepth 1 -type f | wc -l)" = 3
           printf '%s  %s\n' \
-            '49d3460a9509de4367262418883a40209b247ab2c4dcefaee3da0e4c31e678be' \
+            '994cc13f9af0e46670f421a6b19574b679d7b1e3cc5b6feb0b07810a1a564eea' \
             "$release/teleagent-release.tar" | sha256sum --check --status
           gh attestation verify "$release/teleagent-release.tar" \
             --bundle "$release/attestation.json" \

@@ -205,3 +205,11 @@ manifest. V87 reuses those reviewed dependency projections and runtime APK
 inputs unchanged. New independent images, complete bundles, fresh scanner
 evidence and protected signing/consuming checks are still required. Previous
 signed workflows and scripts remain unchanged.
+
+The initial V87 signing run `43229944510` produced a signature, but its
+consumer refused before signature verification because that workflow retained
+the V86 bundle pin. It is not an accepted release and was never installed.
+The corrected consumer pins V87's observed bundle; a new reviewed authority
+revision must sign and consume it again. The old run, source commit and signature
+remain preserved. Workflow-to-record contract tests now detect this mismatch
+before protected signing. No signature or hash check is removed.

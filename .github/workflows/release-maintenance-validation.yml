@@ -6,6 +6,8 @@ on:
       - 'scripts/release_engine.py'
       - 'scripts/release-tool.py'
       - 'scripts/test_release_engine.py'
+      - 'scripts/test_release_workflow_bindings.py'
+      - '.github/workflows/teleagent-v*-release-decision.yml'
       - 'scripts/check-release-parity.py'
       - 'scripts/fixtures/*-engine-reference.json'
       - 'scripts/verify-v85-release-decision.py'
@@ -41,6 +43,8 @@ jobs:
       - name: Test compatibility and refusal boundaries
         run: |
           python3 -I -B scripts/test_release_engine.py
+          python3 -I -B scripts/test_release_workflow_bindings.py
+          python3 -I -B scripts/test_verify_v87_voice_scan.py
           python3 -I -B scripts/test_project_v86_security_packages.py
           python3 -I -B scripts/test_verify_v86_voice_scan.py
 

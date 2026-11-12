@@ -1,0 +1,97 @@
+{
+  "schema": "teleagent.release-policy.v1",
+  "version": 87,
+  "applicationRevision": "88d5238d1618b6e1360d4565e6fc1162dfb5f0e5",
+  "applicationTree": "cbfc1f0d53883628a2fc05bd8f8e3e220157596d",
+  "bundleSha256": "994cc13f9af0e46670f421a6b19574b679d7b1e3cc5b6feb0b07810a1a564eea",
+  "bundleBytes": 897802240,
+  "manifestSha256": "be3187e74da3e9aa7cbbe5d671e1e5ec8dc16508b1e3cc390ca957c71a7ddae6",
+  "voiceSha256": "3fa6976f250ea9749ee8132cd3f34fcfc1b7e62e3160714514998558a71fc1ab",
+  "voiceConfigDigest": "sha256:c5b0d28c5ddba41b3d6c1b5f189d7fbefdee2c8deaf5eaf39183a9db668f6d09",
+  "voiceSbomSha256": "264456722d0234934c6eb56861237b7be46d5dc1b2c46f275d7acfdfe2add743",
+  "nativeTarSha256": "3001c2ffb4f6cfda7032ee7a3dda684fcae0991860491be38e205bdf51e5f10a",
+  "providerManifestSha256": "sha256:3f75ef0c36f8e8c0131b725a3143458b83da954b6aebe253241cc05981273c8b",
+  "hostDependencyFiles": 3939,
+  "sourceEntries": 681,
+  "scanReportSha256": "17e4141f5e5ff3473e4c3ab32360ebdab216d13d5bbdf34763870d80612464cd",
+  "scanCheckSha256": "a1aad00c16282b950f7c6da367bc00646d8476d86f009831e7211905a639b915",
+  "dbMetadataSha256": "c9a8584c5071b9a1d769c68c44d02ea1a7ec1e14a6c3910a44f8b0ad7e44c671",
+  "scanVerifierSha256": "e8b47c6ac7025b39ff54100961293de010bcb3d8ce752ea6933dbf2df92859ab",
+  "scanTargets": [
+    {
+      "class": "lang-pkgs",
+      "packageCount": 142,
+      "type": "node-pkg"
+    },
+    {
+      "class": "os-pkgs",
+      "packageCount": 18,
+      "type": "alpine"
+    }
+  ],
+  "inputManifests": {
+    "apk.json": "dcd6c02ebbf9d26efc9f7bce8c58c9a2ad9dfb6d06da36689cebfe56e276338d",
+    "body-parser-v85.json": "d707bfefedd652638293637510ddb9acc5c6239ddb5574ffc29c78c0e60ab323",
+    "controller-ws-v50.json": "b707dbcb234f65b62470210fda724574650d011ed1a87466cc9525747d00296d",
+    "engine.json": "fa6ca7d6da2b13855fe1d0ddeed6b6b36b756e7c917f78c59c2384a1b5e77ab5",
+    "follow-redirects-v81.json": "f074b0292f3f18c2b04ec113da45b57673e85b26fb4fb4b6ddb8d2a1cfd1cba6",
+    "indexes.json": "1194d3519645cc83f07d791dbc23aa7dcfa750a5f2eea06b8ee5378bafe7f620",
+    "proxy-addr-v66.json": "cc34d72d5de246633531cc1fdfd9b72adc5698494eb0ef45c64f49c8b45e82ef",
+    "runtime-apk-v84.json": "8d29c2b3ad0c809e18e3e87b751d5656a35826c801dabd491b5030cb576e5fd8",
+    "security-packages-v86.json": "af0970c0f9f4ac6c585cad4825333a9684415ec82fe3bc9c2d3125a480471496",
+    "source-pairs-patched-20260923.json": "dada99e66a0831b7ab974c392affcabe13b4c1ace13d2e9c9b65155d3c7900a9",
+    "source-pairs-v17-20260926.json": "0518fb03ede3624a45798c66860ea8d29e62d52def9cddca087949a2ceff5e82",
+    "source-pairs-v50-20260930.json": "d577efc2b88f666b0a65d6700bfcf5b65b11c66e0d1ef4c1120ace8bb0f86db5",
+    "source-pairs-v53-20261001.json": "0ddb1678b5730db4056a6540d3011d7180b45b34b39de142e73e5594dca8dc5e",
+    "source-pairs-v66-20261006.json": "ccbe83d46e0d13285424552c0272d6dec937714e340458ff63818c84f01a285f",
+    "source-pairs-v81-20261022.json": "5a2a2a47f6b562ccd14f77f354e3ebc7fe7ebac0e9ee0c656b7d2beeb4399d6b",
+    "source-pairs-v85-20261027.json": "48ffad8d8e4cd0f5df5c10557fbec4f7a25d89ac5bf2ce722e202db73065a889",
+    "source-pairs-v86-20261031.json": "209a278edcf51c7d9dc183038532b65e8880b6eba1efa10ad81446b23276660f",
+    "sqlite-napi-v17.json": "1cbcc979bd96c155e1e11944f9dbd33db2939ee9469b43672c1d4c8fc77cd0ce",
+    "tools.json": "54f917a136554099a3872abbdd2965483babec33f71d45f4cbb0eaa8f30badb8",
+    "voice-axios-v53.json": "3b26ed8dd1cf3c51ddb3d9dfcf4efee67bfd3d007ee34cd72ef482cd2556b18a"
+  },
+  "inputSelectionSha256": "b747e036b76091da8d451a0badcbab5341ca4da5779a4a2f8084a16ca0e42953",
+  "sourceRuns": {
+    "nativeBuild": {
+      "id": 35935470213,
+      "revision": "197be7276c00fb9d1eb89b4739eec6dcec9e6b14",
+      "branch": "feat/hosted-capacity-probe-20260923",
+      "attempt": 1,
+      "workflow": ".github/workflows/teleagent-native-build-diagnostic.yml",
+      "event": "workflow_dispatch"
+    },
+    "publicVoiceImage": {
+      "id": 43228101061,
+      "revision": "270415f13b6baa1d3805f8e676b192556e132c26",
+      "branch": "feat/teleagent-v87-lookup-release-20261112",
+      "attempt": 1,
+      "workflow": ".github/workflows/teleagent-v87-hosted-voice-image.yml",
+      "event": "push"
+    },
+    "voiceSbom": {
+      "id": 43228482319,
+      "revision": "2d7bdf03080725586631297e7b9da8de9ff1b4ab",
+      "branch": "feat/teleagent-v87-lookup-release-20261112",
+      "attempt": 1,
+      "workflow": ".github/workflows/teleagent-v87-hosted-voice-sbom.yml",
+      "event": "push"
+    },
+    "freshScan": {
+      "id": 43228482293,
+      "revision": "2d7bdf03080725586631297e7b9da8de9ff1b4ab",
+      "branch": "feat/teleagent-v87-lookup-release-20261112",
+      "attempt": 1,
+      "workflow": ".github/workflows/teleagent-v87-hosted-voice-scan.yml",
+      "event": "push"
+    },
+    "bundle": {
+      "id": 43228812118,
+      "revision": "cf2bfbe8dc96b09871d91aa9561a9948ebd365a8",
+      "branch": "feat/teleagent-v87-lookup-release-20261112",
+      "attempt": 1,
+      "workflow": ".github/workflows/teleagent-v87-hosted-release-bundle.yml",
+      "event": "push"
+    }
+  }
+}

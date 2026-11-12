@@ -191,3 +191,17 @@ sources. V85's original workflows, scripts and signed evidence remain unchanged.
 No signing decision authorizes storage expansion, hold release, production
 interruption or handset acceptance. Host staging and activation require their
 separate reviewed boundaries and current capacity evidence.
+
+## V87 conversational session lookup, November 12
+
+V87 selects checked app main `88d5238d1618b6e1360d4565e6fc1162dfb5f0e5`.
+It refreshes enrolled labels and observed tmux group associations for each
+decision, without sampling native activity or reading history. Exploratory
+name matching never grants delivery authority. Exact-target dispatch checks
+remain in the application. Unknown group membership is not inferred.
+
+All twelve package and lockfile identities match the existing V86 source-pair
+manifest. V87 reuses those reviewed dependency projections and runtime APK
+inputs unchanged. New independent images, complete bundles, fresh scanner
+evidence and protected signing/consuming checks are still required. Previous
+signed workflows and scripts remain unchanged.
